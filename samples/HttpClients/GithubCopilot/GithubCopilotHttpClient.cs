@@ -1,4 +1,5 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using System.Net.Http.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot
@@ -11,13 +12,13 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
         private DateTimeOffset _expiresAt = DateTimeOffset.MinValue;
         private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public async Task<ChatCompletionResponse> GetCompletionAsync(ChatCompletionsDto body, CancellationToken ct = default)
+        public async Task<ChatCompletionResponse> GetChatCompletionAsync(ChatCompletionRequest payload, CancellationToken ct = default)
         {
             var token = await GetValidCopilotTokenAsync(ct);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
             {
-                Content = JsonContent.Create(body)
+                Content = JsonContent.Create(payload)
             };
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 

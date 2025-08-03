@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace GithubApiProxy.HttpClients.GithubCopilot
+namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class ChoiceNonStreaming
     {
@@ -12,7 +12,5 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
 
         [JsonPropertyName("finish_reason")]
         public string? FinishReason { get; set; }
-
-        // Add other properties if needed
     }
 }

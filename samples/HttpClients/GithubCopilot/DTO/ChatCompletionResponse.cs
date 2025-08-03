@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace GithubApiProxy.HttpClients.GithubCopilot
+namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class ChatCompletionResponse
     {
@@ -21,8 +21,5 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
 
         [JsonPropertyName("system_fingerprint")]
         public string? SystemFingerprint { get; set; }
-
-        [JsonPropertyName("usage")]
-        public Usage? Usage { get; set; }
     }
 }

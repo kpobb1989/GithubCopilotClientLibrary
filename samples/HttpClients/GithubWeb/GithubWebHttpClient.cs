@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace GithubApiProxy.HttpClients.GithubWeb
 {
-    internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory) : IGithubWebHttpClient
+    internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory, GithubCopilotOptions options) : IGithubWebHttpClient
     {
         public async Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default)
         {
@@ -13,8 +13,8 @@ namespace GithubApiProxy.HttpClients.GithubWeb
 
             var body = new Dictionary<string, string>
             {
-                { "client_id", AppSettings.ClientId },
-                { "scope", AppSettings.Scope }
+                { "client_id", options.ClientId },
+                { "scope", options.Scope }
             };
 
             var httpResponse = await client.PostAsJsonAsync("login/device/code", body, ct);
@@ -32,7 +32,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
 
             var body = new Dictionary<string, string>
             {
-                { "client_id", AppSettings.ClientId },
+                { "client_id", options.ClientId },
                 { "device_code", deviceCode },
                 { "grant_type", "urn:ietf:params:oauth:grant-type:device_code" }
             };

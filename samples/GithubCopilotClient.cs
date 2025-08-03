@@ -1,6 +1,7 @@
 ﻿using GithubApiProxy.Abstractions;
 using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.HttpClients.GithubCopilot;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
@@ -13,12 +14,14 @@ namespace GithubApiProxy
         private readonly IGithubApiHttpClient _githubApiHttpClient;
         private readonly IGithubWebHttpClient _githubWebHttpClient;
         private readonly IGithubCopilotHttpClient _githubCopilotHttpClient;
-        private readonly GithubCopilotOptions _options;
 
-        private readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
+        private readonly GithubCopilotOptions _options;
+        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             WriteIndented = true
         };
+
+        public List<Message> ConversationHistory { get; set; } = [];
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, providing access to GitHub API,
@@ -33,7 +36,7 @@ namespace GithubApiProxy
         /// endpoints.</param>
         /// <param name="options">A <see cref="GithubCopilotOptions"/> object containing configuration settings for the client.</param>
         public GithubCopilotClient(
-            IGithubApiHttpClient githubApiHttpClient, 
+            IGithubApiHttpClient githubApiHttpClient,
             IGithubWebHttpClient githubWebHttpClient,
             IGithubCopilotHttpClient githubCopilotHttpClient,
             GithubCopilotOptions options)
@@ -96,11 +99,16 @@ namespace GithubApiProxy
 
                 Console.WriteLine($"Please enter the code {deviceCode.UserCode} in {deviceCode.VerificationUri}");
 
-                Process.Start(new ProcessStartInfo
+                if (_options.OpenBrowserOnAuthenticate)
                 {
-                    FileName = deviceCode.VerificationUri,
-                    UseShellExecute = true
-                });
+                    Console.WriteLine("Opening browser for authentication...");
+
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = deviceCode.VerificationUri,
+                        UseShellExecute = true
+                    });
+                }
 
                 accessToken = await _githubWebHttpClient.GetAccessTokenAsync(deviceCode.DeviceCode, deviceCode.Interval, ct);
 
@@ -136,7 +144,7 @@ namespace GithubApiProxy
         /// is available.</returns>
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
-            var chatCompletionsDto = new ChatCompletionsDto
+            var chatCompletionsDto = new ChatCompletionRequest
             {
                 FrequencyPenalty = _options.FrequencyPenalty,
                 PresencePenalty = _options.PresencePenalty,
@@ -145,19 +153,28 @@ namespace GithubApiProxy
                 N = _options.N,
                 Stream = false,
                 Model = _options.Model,
-                Messages =
-                [
-                    new Message
-                    {
-                        Role = "user",
-                        Content = prompt
-                    }
-                ]
+                Messages = GetMessages(prompt)
             };
 
-            var response = await _githubCopilotHttpClient.GetCompletionAsync(chatCompletionsDto, ct);
+            var response = await _githubCopilotHttpClient.GetChatCompletionAsync(chatCompletionsDto, ct);
 
             return response.Choices.FirstOrDefault()?.Message?.Content ?? null;
+        }
+
+        private IEnumerable<Message> GetMessages(string prompt)
+        {
+            var messages = _options.KeepConversationHistory ? ConversationHistory : [];
+
+            // Ensure the system prompt is the first message if not already present
+            if (!string.IsNullOrEmpty(_options.SystemPrompt) &&
+                (messages.Count == 0 || !string.Equals(messages[0].Role, "system", StringComparison.OrdinalIgnoreCase)))
+            {
+                messages.Insert(0, new Message("system", _options.SystemPrompt));
+            }
+
+            messages.Add(new Message("user", prompt));
+
+            return messages;
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace GithubApiProxy.HttpClients.GithubCopilot
+namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class ResponseFormat
     {

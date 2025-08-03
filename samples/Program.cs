@@ -1,9 +1,5 @@
 ﻿using GithubApiProxy;
 using GithubApiProxy.Abstractions;
-using GithubApiProxy.Abstractions.HttpClients;
-using GithubApiProxy.HttpClients.GithubApi;
-using GithubApiProxy.HttpClients.GithubCopilot;
-using GithubApiProxy.HttpClients.GithubWeb;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -30,7 +26,13 @@ while (true)
 {
     var prompt = Console.ReadLine();
 
-    var text = await githubCopilotService.GetTextCompletionAsync(prompt!);
+    if (string.IsNullOrWhiteSpace(prompt))
+    {
+        Console.WriteLine("Prompt cannot be empty. Please enter a valid prompt.");
+        continue;
+    }
+
+    var text = await githubCopilotService.GetTextCompletionAsync(prompt);
 
     Console.WriteLine(text);
 }
