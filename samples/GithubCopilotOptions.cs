@@ -18,7 +18,7 @@
         /// <summary>
         /// Gets or sets the OAuth client ID for GitHub authentication.
         /// </summary>
-        public string ClientId { get; set; } = "01ab8ac9400c4e429b23";
+        public string ClientId { get; set; } = "Iv1.b507a08c87ecfe98";
 
         /// <summary>
         /// Gets or sets the OAuth scope for GitHub authentication.
@@ -28,17 +28,17 @@
         /// <summary>
         /// Gets or sets the user agent string used in HTTP requests.
         /// </summary>
-        public string UserAgent { get; set; } = "VSCopilotClient/17.14.878.3237";
+        public string UserAgent { get; set; } = "GitHubCopilotChat/0.29.1";
 
         /// <summary>
         /// Gets or sets the editor version string sent in HTTP headers.
         /// </summary>
-        public string EditorVersion { get; set; } = "VS/VisualStudio.17.Release/17.14.36310.24";
+        public string EditorVersion { get; set; } = "vscode/1.102.3";
 
         /// <summary>
         /// Gets or sets the GitHub API version to use in requests.
         /// </summary>
-        public string GithubApiVersion { get; set; } = "2022-11-28";
+        public string GithubApiVersion { get; set; } = "2025-05-01";
 
         /// <summary>
         /// Gets or sets the file name used to store the GitHub token.

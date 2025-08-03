@@ -241,6 +241,11 @@ namespace GithubApiProxy
                     Name = m.Name,
                     Version = m.Version,
                     ModelPickerEnabled = m.ModelPickerEnabled,
+                    Billing = m.Billing is not null ? new GithubCopilotModelBilling
+                    {
+                        IsPremium = m.Billing.IsPremium ?? false,
+                        Multiplier = m.Billing.Multiplier ?? 0
+                    } : null,
                     Limits = m.Capabilities.Limits is not null
                         ? new GithubCopilotModelLimits
                         {

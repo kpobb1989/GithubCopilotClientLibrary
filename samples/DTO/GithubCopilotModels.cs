@@ -10,6 +10,13 @@ namespace GithubApiProxy.DTO
         public required string Tokenizer { get; set; }
         public required bool Preview { get; set; }
         public required string Vendor { get; set; }
+        public GithubCopilotModelBilling? Billing { get; set; }
+    }
+
+    public class GithubCopilotModelBilling
+    {
+        public bool IsPremium { get; set; }
+        public double Multiplier { get; set; }
     }
 
     public class GithubCopilotModelLimits

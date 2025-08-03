@@ -11,6 +11,9 @@ namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Models
 
     public class Model
     {
+        [JsonProperty("billing")]
+        public Billing? Billing { get; set; }
+
         [JsonProperty("capabilities")]
         public ModelCapabilities? Capabilities { get; set; }
 
@@ -34,6 +37,15 @@ namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Models
 
         [JsonProperty("policy")]
         public Policy? Policy { get; set; }
+    }
+
+    public class Billing
+    {
+        [JsonProperty("is_premium")]
+        public bool? IsPremium { get; set; }
+
+        [JsonProperty("multiplier")]
+        public double? Multiplier { get; set; }
     }
 
     public class Policy
