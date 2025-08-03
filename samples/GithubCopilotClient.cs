@@ -4,6 +4,7 @@ using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Schema.Generation;
 using System.Diagnostics;
@@ -16,6 +17,7 @@ namespace GithubApiProxy
         private readonly IGithubApiHttpClient _githubApiHttpClient;
         private readonly IGithubWebHttpClient _githubWebHttpClient;
         private readonly IGithubCopilotHttpClient _githubCopilotHttpClient;
+        private readonly ILogger<GithubCopilotClient> _logger;
 
         private readonly GithubCopilotOptions _options;
         private readonly JsonSerializer _jsonSerializer;
@@ -41,6 +43,7 @@ namespace GithubApiProxy
             IGithubApiHttpClient githubApiHttpClient,
             IGithubWebHttpClient githubWebHttpClient,
             IGithubCopilotHttpClient githubCopilotHttpClient,
+            ILogger<GithubCopilotClient> logger,
             JsonSerializer jsonSerializer,
             GithubCopilotOptions options)
         {
@@ -48,6 +51,7 @@ namespace GithubApiProxy
             _githubWebHttpClient = githubWebHttpClient;
             _githubCopilotHttpClient = githubCopilotHttpClient;
             _jsonSerializer = jsonSerializer;
+            _logger = logger;
             _options = options;
         }
 
@@ -74,7 +78,7 @@ namespace GithubApiProxy
             _githubWebHttpClient = serviceProvider.GetRequiredService<IGithubWebHttpClient>();
             _githubCopilotHttpClient = serviceProvider.GetRequiredService<IGithubCopilotHttpClient>();
             _jsonSerializer = serviceProvider.GetRequiredService<JsonSerializer>();
-
+            _logger = serviceProvider.GetRequiredService<ILogger<GithubCopilotClient>>();
             _options = options;
         }
 
@@ -105,11 +109,11 @@ namespace GithubApiProxy
             {
                 var deviceCode = await _githubWebHttpClient.GetDeviceCodeAsync(ct);
 
-                Console.WriteLine($"Please enter the code {deviceCode.UserCode} in {deviceCode.VerificationUri}");
+                _logger.LogInformation($"Please enter the code {deviceCode.UserCode} in {deviceCode.VerificationUri}");
 
                 if (_options.OpenBrowserOnAuthenticate)
                 {
-                    Console.WriteLine("Opening browser for authentication...");
+                    _logger.LogInformation("Opening browser for authentication...");
 
                     Process.Start(new ProcessStartInfo
                     {
@@ -129,7 +133,7 @@ namespace GithubApiProxy
 
             githubAccessToken = accessToken.AccessToken;
 
-            Console.WriteLine("Authentication successful. You can now use the GitHub Copilot API.");
+            _logger.LogInformation("Authentication successful. You can now use the GitHub Copilot API.");
         }
 
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)

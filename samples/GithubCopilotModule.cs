@@ -45,6 +45,8 @@ namespace GithubApiProxy
 
             services.AddSingleton(options);
 
+            services.AddLogging();
+
             services.AddSingleton(JsonSerializer.Create(new JsonSerializerSettings()
             {
                 ContractResolver = new CamelCasePropertyNamesContractResolver(),
