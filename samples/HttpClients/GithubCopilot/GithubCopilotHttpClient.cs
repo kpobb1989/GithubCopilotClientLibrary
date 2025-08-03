@@ -3,11 +3,7 @@ using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Xml.Linq;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot
 {
@@ -21,18 +17,14 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
 
         public async Task<ChatCompletionResponse> GetChatCompletionAsync(ChatCompletionRequest request, CancellationToken ct = default)
         {
-            var token = await GetValidCopilotTokenAsync(ct);
-
-            _httpClient.AddOrReplaceHeader("Authorization", $"Bearer {token}");
+            await RefreshCopilotTokenAsync(ct);
 
             return await _httpClient.ExecuteAndGetJsonAsync<ChatCompletionResponse>("chat/completions", HttpMethod.Post, jsonSerializer, request, ct);
         }
 
         public async IAsyncEnumerable<ChatCompletionStreamingResponse> GetChatCompletionStreamingAsync(ChatCompletionRequest request, [EnumeratorCancellation] CancellationToken ct = default)
         {
-            var token = await GetValidCopilotTokenAsync(ct);
-
-            _httpClient.AddOrReplaceHeader("Authorization", $"Bearer {token}");
+            await RefreshCopilotTokenAsync(ct);
 
             if (request.Stream)
             {
@@ -74,7 +66,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
             _httpClient.Dispose();
         }
 
-        private async Task<string> GetValidCopilotTokenAsync(CancellationToken ct)
+        private async Task RefreshCopilotTokenAsync(CancellationToken ct = default)
         {
             await _semaphore.WaitAsync(ct);
             try
@@ -86,12 +78,13 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
                     _githubCopilotToken = newToken.Token;
                     _expiresAt = DateTimeOffset.FromUnixTimeSeconds(newToken.ExpiresAt);
                 }
-                return _githubCopilotToken;
+
+                _httpClient.AddOrReplaceHeader("Authorization", $"Bearer {_githubCopilotToken}");
             }
             finally
             {
                 _semaphore.Release();
-            }
+            }          
         }
     }
 }
