@@ -30,7 +30,6 @@ namespace GithubApiProxy
 
         private string? githubAccessToken = null;
 
-
         /// <summary>
         /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, configuring it with the specified
         /// options.
@@ -79,6 +78,9 @@ namespace GithubApiProxy
             _githubApiHttpClient.Dispose();
             _githubCopilotHttpClient.Dispose();
         }
+
+        public IEnumerable<GithubCopilotMessage> GetConversationHistory()
+            => ConversationHistory.Select(s => new GithubCopilotMessage() { Role = s.Role, Content = s.Content });
 
         public async Task AuthenticateAsync(bool force = false, CancellationToken ct = default)
         {

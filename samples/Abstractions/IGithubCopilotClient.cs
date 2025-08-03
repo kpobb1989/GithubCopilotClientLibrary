@@ -5,6 +5,13 @@ namespace GithubApiProxy.Abstractions
     internal interface IGithubCopilotClient : IDisposable
     {
         /// <summary>
+        /// Retrieves the history of messages exchanged in the current conversation.
+        /// </summary>
+        /// <returns>An enumerable collection of <see cref="GithubCopilotMessage"/> objects representing the messages in the
+        /// conversation history. The collection will be empty if no messages exist in the history.</returns>
+        IEnumerable<GithubCopilotMessage> GetConversationHistory();
+
+        /// <summary>
         /// Authenticates the user asynchronously.
         /// </summary>
         /// <remarks>Use this method to authenticate a user in scenarios where authentication is required.
