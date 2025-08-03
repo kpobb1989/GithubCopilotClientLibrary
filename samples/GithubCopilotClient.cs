@@ -4,6 +4,7 @@ using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace GithubApiProxy
@@ -72,14 +73,6 @@ namespace GithubApiProxy
             _options = options;
         }
 
-        /// <summary>
-        /// Authenticates the application with GitHub by obtaining an access token.
-        /// </summary>
-        /// <remarks>This method attempts to retrieve an access token from a local file. If the token is
-        /// not found or is invalid,  it initiates a device code authentication flow, prompting the user to enter a code
-        /// at the provided verification URL. The access token is then stored locally for future use.</remarks>
-        /// <param name="ct">A <see cref="CancellationToken"/> that can be used to cancel the authentication process.</param>
-        /// <returns></returns>
         public async Task AuthenticateAsync(CancellationToken ct = default)
         {
             AccessTokenDto? accessToken = null;
@@ -130,32 +123,12 @@ namespace GithubApiProxy
             _githubCopilotHttpClient.Dispose();
         }
 
-        /// <summary>
-        /// Generates a text completion based on the provided prompt.
-        /// </summary>
-        /// <remarks>This method uses a predefined model and configuration to generate text completions.
-        /// The result is derived from the first choice returned by the completion service.</remarks>
-        /// <param name="prompt">The input text that serves as the basis for generating the completion. This should be a meaningful string
-        /// that guides the completion process.</param>
-        /// <param name="ct">A <see cref="CancellationToken"/> that can be used to cancel the operation. Defaults to <see
-        /// langword="default"/> if not provided.</param>
-        /// <returns>A <see cref="string"/> containing the generated text completion, or <see langword="null"/> if no completion
-        /// is available.</returns>
+
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
-            var chatCompletionsDto = new ChatCompletionRequest
-            {
-                FrequencyPenalty = _options.FrequencyPenalty,
-                PresencePenalty = _options.PresencePenalty,
-                Temperature = _options.Temperature,
-                TopP = _options.TopP,
-                N = _options.N,
-                Stream = false,
-                Model = _options.Model,
-                Messages = GetMessages(prompt)
-            };
+            var request = GetCompletionRequest(prompt, stream: false);
 
-            var response = await _githubCopilotHttpClient.GetChatCompletionAsync(chatCompletionsDto, ct);
+            var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
 
             var messge = response.Choices?.FirstOrDefault()?.Message;
 
@@ -167,7 +140,32 @@ namespace GithubApiProxy
             return messge?.Content ?? null;
         }
 
-        private IEnumerable<Message> GetMessages(string prompt)
+        public async IAsyncEnumerable<Message?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            var request = GetCompletionRequest(prompt, stream: true);
+
+            await foreach (var chunk in _githubCopilotHttpClient.GetChatCompletionStreamingAsync(request, ct: ct))
+            {
+                yield return chunk?.Choices?.FirstOrDefault()?.Delta;
+            }
+        }
+
+        private ChatCompletionRequest GetCompletionRequest(string prompt, bool stream)
+        {
+            return new ChatCompletionRequest
+            {
+                FrequencyPenalty = _options.FrequencyPenalty,
+                PresencePenalty = _options.PresencePenalty,
+                Temperature = _options.Temperature,
+                TopP = _options.TopP,
+                N = _options.N,
+                Stream = stream,
+                Model = _options.Model,
+                Messages = GetMessages(prompt)
+            };
+        }
+
+        private List<Message> GetMessages(string prompt)
         {
             var messages = _options.KeepConversationHistory ? ConversationHistory : [];
 

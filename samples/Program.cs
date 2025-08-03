@@ -22,17 +22,62 @@ Console.WriteLine("Authentication successful. You can now use the GitHub Copilot
 
 Console.WriteLine("Enter a prompt for GitHub Copilot:");
 
+//while (true)
+//{
+//    var prompt = Console.ReadLine();
+
+//    if (string.IsNullOrWhiteSpace(prompt))
+//    {
+//        Console.WriteLine("Prompt cannot be empty. Please enter a valid prompt.");
+//        continue;
+//    }
+
+//    var text = await githubCopilotService.GetTextCompletionAsync(prompt);
+
+//    Console.WriteLine(text);
+//}
+
+var cts = new CancellationTokenSource();
+
+Console.WriteLine("CTRL+C to terminate the conversation.");
+#pragma warning disable CS4014
+Task.Run(async () =>
+{
+    while (true)
+    {
+        var keyInfo = Console.ReadKey(intercept: true);
+        if (keyInfo.Key == ConsoleKey.C && keyInfo.Modifiers == ConsoleModifiers.Control)
+        {
+            await cts.CancelAsync();
+        }
+    }
+});
+
 while (true)
 {
-    var prompt = Console.ReadLine();
-
-    if (string.IsNullOrWhiteSpace(prompt))
+    if (cts.Token.IsCancellationRequested)
     {
-        Console.WriteLine("Prompt cannot be empty. Please enter a valid prompt.");
-        continue;
+        cts = new CancellationTokenSource();
     }
 
-    var text = await githubCopilotService.GetTextCompletionAsync(prompt);
+    var prompt = Console.ReadLine()!;
 
-    Console.WriteLine(text);
+    try
+    {
+        await foreach (var chunk in githubCopilotService.GetChatCompletionAsync(prompt, ct: cts.Token))
+        {
+            await Task.Delay(50, cts.Token);
+
+            Console.Write(chunk?.Content);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+    }
+
+    Console.WriteLine();
 }

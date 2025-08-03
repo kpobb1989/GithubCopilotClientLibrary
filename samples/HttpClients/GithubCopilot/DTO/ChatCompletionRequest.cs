@@ -26,7 +26,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
         public int? N { get; set; }
 
         [JsonPropertyName("stream")]
-        public bool? Stream { get; set; }
+        public bool Stream { get; set; }
 
         [JsonPropertyName("frequency_penalty")]
         public double? FrequencyPenalty { get; set; }

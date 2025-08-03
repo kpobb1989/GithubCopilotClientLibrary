@@ -1,6 +1,9 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot
 {
@@ -12,21 +15,72 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
         private DateTimeOffset _expiresAt = DateTimeOffset.MinValue;
         private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public async Task<ChatCompletionResponse> GetChatCompletionAsync(ChatCompletionRequest payload, CancellationToken ct = default)
+        public async Task<ChatCompletionResponse> GetChatCompletionAsync(ChatCompletionRequest request, CancellationToken ct = default)
         {
             var token = await GetValidCopilotTokenAsync(ct);
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
             {
-                Content = JsonContent.Create(payload)
+                Content = JsonContent.Create(request)
             };
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var httpResponse = await _httpClient.SendAsync(httpRequest, ct);
 
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(cancellationToken: ct)
-                ?? throw new Exception("Cannot deserialize completion response");
+            httpResponse.EnsureSuccessStatusCode();
+
+            return await httpResponse.Content.ReadFromJsonAsync<ChatCompletionResponse>(cancellationToken: ct)
+                ?? throw new Exception($"Cannot deserialize {nameof(ChatCompletionResponse)}");
+        }
+
+        public async IAsyncEnumerable<ChatCompletionStreamingResponse> GetChatCompletionStreamingAsync(ChatCompletionRequest request, [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            var token = await GetValidCopilotTokenAsync(ct);
+
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+            {
+                Content = JsonContent.Create(request)
+            };
+
+            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+           
+            var httpResponse = await _httpClient.SendAsync(httpRequest, ct);
+
+            httpResponse.EnsureSuccessStatusCode();
+
+            if (request.Stream)
+            {
+                using var stream = await httpResponse.Content.ReadAsStreamAsync();
+
+                using var reader = new StreamReader(stream);
+
+                while (!reader.EndOfStream)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    var line = await reader.ReadLineAsync().ConfigureAwait(false);
+
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    // Only process lines starting with "data: "
+                    if (!line.StartsWith("data: ")) continue;
+
+                    var json = line.Substring("data: ".Length).Trim();
+
+                    // Skip [DONE] or other non-JSON data
+                    if (json == "[DONE]") continue;
+
+                    var response = JsonSerializer.Deserialize<ChatCompletionStreamingResponse>(json);
+
+                    if (response != null)
+                    {
+                        yield return response;
+                    }
+                }
+            }
         }
 
         public void Dispose()
