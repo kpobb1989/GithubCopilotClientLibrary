@@ -24,7 +24,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
             return await httpResponse.Content.ReadFromJsonAsync<DeviceCodeDto>(ct) ?? throw new Exception($"Can not deserialize {nameof(DeviceCodeDto)}");
         }
 
-        public async Task<AccessTokenDto> GetAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default)
+        public async Task<AccessTokenDto> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default)
         {
             using var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
 

@@ -6,6 +6,6 @@ namespace GithubApiProxy.Abstractions.HttpClients
     {
         Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default);
 
-        Task<AccessTokenDto> GetAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default);
+        Task<AccessTokenDto> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default);
     }
 }

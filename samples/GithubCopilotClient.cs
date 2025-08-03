@@ -1,6 +1,5 @@
 ﻿using GithubApiProxy.Abstractions;
 using GithubApiProxy.Abstractions.HttpClients;
-using GithubApiProxy.HttpClients.GithubCopilot;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
@@ -110,7 +109,7 @@ namespace GithubApiProxy
                     });
                 }
 
-                accessToken = await _githubWebHttpClient.GetAccessTokenAsync(deviceCode.DeviceCode, deviceCode.Interval, ct);
+                accessToken = await _githubWebHttpClient.WaitForAccessTokenAsync(deviceCode.DeviceCode, deviceCode.Interval, ct);
 
                 using var fileStream = File.Create(githubTokenPath);
 
@@ -158,7 +157,14 @@ namespace GithubApiProxy
 
             var response = await _githubCopilotHttpClient.GetChatCompletionAsync(chatCompletionsDto, ct);
 
-            return response.Choices.FirstOrDefault()?.Message?.Content ?? null;
+            var messge = response.Choices?.FirstOrDefault()?.Message;
+
+            if (_options.KeepConversationHistory && messge != null)
+            {
+                ConversationHistory.Add(messge);
+            }
+
+            return messge?.Content ?? null;
         }
 
         private IEnumerable<Message> GetMessages(string prompt)

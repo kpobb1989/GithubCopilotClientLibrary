@@ -58,15 +58,15 @@
         /// <summary>
         /// Gets or sets the temperature parameter for completions.
         /// </summary>
-        public int Temperature { get; set; } = 0;
+        public float Temperature { get; set; } = Constants.Temperature.CodingOrMath;
 
         /// <summary>
-        /// Gets or sets the top_p parameter for completions.
+        /// Gets or sets to control the diversity of the generated output
         /// </summary>
         public int TopP { get; set; } = 1;
 
         /// <summary>
-        /// Gets or sets the number of completions to generate.
+        /// Gets or sets the number of completions (responses) to generate for a single prompt.
         /// </summary>
         public int N { get; set; } = 1;
 
