@@ -15,37 +15,12 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
-builder.Services.AddHttpClient(nameof(GithubWebHttpClient), client =>
-{
-    client.BaseAddress = new Uri("https://github.com");
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
-
-builder.Services.AddHttpClient(nameof(GithubApiHttpClient), client =>
-{
-    client.BaseAddress = new Uri("https://api.github.com");
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-    client.DefaultRequestHeaders.Add("User-Agent", AppSettings.UserAgent);
-    client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", AppSettings.GithubApiVersion);
-});
-
-builder.Services.AddHttpClient(nameof(GithubCopilotHttpClient), client =>
-{
-    client.BaseAddress = new Uri("https://api.individual.githubcopilot.com");
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-    client.DefaultRequestHeaders.Add("Editor-Version", AppSettings.EditorVersion);
-    client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2025-04-01");
-});
-
-// Register http clients
-builder.Services.AddSingleton<IGithubWebHttpClient, GithubWebHttpClient>();
-builder.Services.AddSingleton<IGithubApiHttpClient, GithubApiHttpClient>();
-builder.Services.AddSingleton<IGithubCopilotHttpClient, GithubCopilotHttpClient>();
-builder.Services.AddSingleton<IGithubCopilotClient, GithubCopilotClient>();
+builder.Services.AddGithubCopilotModule();
 
 var app = builder.Build();
 
 var githubCopilotService = app.Services.GetRequiredService<IGithubCopilotClient>();
+
 await githubCopilotService.AuthenticateAsync();
 Console.WriteLine("Authentication successful. You can now use the GitHub Copilot API.");
 

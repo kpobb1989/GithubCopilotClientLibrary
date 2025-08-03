@@ -2,26 +2,87 @@
 using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.HttpClients.GithubCopilot;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
+using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using System.Text.Json;
 
 namespace GithubApiProxy
 {
-    public class GithubCopilotClient(
-        IGithubApiHttpClient githubApiHttpClient,
-        IGithubWebHttpClient githubWebHttpClient,
-        IGithubCopilotHttpClient githubCopilotHttpClient) : IGithubCopilotClient
+    public class GithubCopilotClient : IGithubCopilotClient
     {
+        private readonly IGithubApiHttpClient _githubApiHttpClient;
+        private readonly IGithubWebHttpClient _githubWebHttpClient;
+        private readonly IGithubCopilotHttpClient _githubCopilotHttpClient;
+        private readonly GithubCopilotOptions _options;
+
         private readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
         {
             WriteIndented = true
         };
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, providing access to GitHub API,
+        /// web, and Copilot-specific HTTP clients, as well as configuration options.
+        /// </summary>
+        /// <remarks>This constructor is designed to initialize the client with the necessary dependencies
+        /// for interacting with GitHub services. Ensure that all provided dependencies are properly configured before
+        /// instantiating the client.</remarks>
+        /// <param name="githubApiHttpClient">An instance of <see cref="IGithubApiHttpClient"/> used to interact with GitHub's API.</param>
+        /// <param name="githubWebHttpClient">An instance of <see cref="IGithubWebHttpClient"/> used to perform web-based HTTP operations with GitHub.</param>
+        /// <param name="githubCopilotHttpClient">An instance of <see cref="IGithubCopilotHttpClient"/> used to interact with GitHub Copilot-specific
+        /// endpoints.</param>
+        /// <param name="options">A <see cref="GithubCopilotOptions"/> object containing configuration settings for the client.</param>
+        public GithubCopilotClient(
+            IGithubApiHttpClient githubApiHttpClient, 
+            IGithubWebHttpClient githubWebHttpClient,
+            IGithubCopilotHttpClient githubCopilotHttpClient,
+            GithubCopilotOptions options)
+        {
+            _githubApiHttpClient = githubApiHttpClient;
+            _githubWebHttpClient = githubWebHttpClient;
+            _githubCopilotHttpClient = githubCopilotHttpClient;
+            _options = options;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, configuring it with the specified
+        /// options.
+        /// </summary>
+        /// <remarks>This constructor sets up the necessary services and dependencies for interacting with
+        /// GitHub Copilot APIs. It uses dependency injection to initialize internal HTTP clients required for API
+        /// communication.</remarks>
+        /// <param name="options">The configuration options for the GitHub Copilot client. If <paramref name="options"/> is <see
+        /// langword="null"/>, default options will be used.</param>
+        public GithubCopilotClient(GithubCopilotOptions? options = null)
+        {
+            options ??= new GithubCopilotOptions();
+
+            var services = new ServiceCollection();
+
+            services.AddGithubCopilotModule(options);
+
+            var serviceProvider = services.BuildServiceProvider();
+
+            _githubApiHttpClient = serviceProvider.GetRequiredService<IGithubApiHttpClient>();
+            _githubWebHttpClient = serviceProvider.GetRequiredService<IGithubWebHttpClient>();
+            _githubCopilotHttpClient = serviceProvider.GetRequiredService<IGithubCopilotHttpClient>();
+
+            _options = options;
+        }
+
+        /// <summary>
+        /// Authenticates the application with GitHub by obtaining an access token.
+        /// </summary>
+        /// <remarks>This method attempts to retrieve an access token from a local file. If the token is
+        /// not found or is invalid,  it initiates a device code authentication flow, prompting the user to enter a code
+        /// at the provided verification URL. The access token is then stored locally for future use.</remarks>
+        /// <param name="ct">A <see cref="CancellationToken"/> that can be used to cancel the authentication process.</param>
+        /// <returns></returns>
         public async Task AuthenticateAsync(CancellationToken ct = default)
         {
             AccessTokenDto? accessToken = null;
 
-            var githubTokenPath = Path.Combine(AppContext.BaseDirectory, AppSettings.GithubTokenFileName);
+            var githubTokenPath = Path.Combine(AppContext.BaseDirectory, _options.GithubTokenFileName);
 
             if (File.Exists(githubTokenPath))
             {
@@ -31,7 +92,7 @@ namespace GithubApiProxy
             }
             if (accessToken == null)
             {
-                var deviceCode = await githubWebHttpClient.GetDeviceCodeAsync(ct);
+                var deviceCode = await _githubWebHttpClient.GetDeviceCodeAsync(ct);
 
                 Console.WriteLine($"Please enter the code {deviceCode.UserCode} in {deviceCode.VerificationUri}");
 
@@ -41,33 +102,49 @@ namespace GithubApiProxy
                     UseShellExecute = true
                 });
 
-                accessToken = await githubWebHttpClient.GetAccessTokenAsync(deviceCode.DeviceCode, deviceCode.Interval, ct);
+                accessToken = await _githubWebHttpClient.GetAccessTokenAsync(deviceCode.DeviceCode, deviceCode.Interval, ct);
 
                 using var fileStream = File.Create(githubTokenPath);
 
                 await JsonSerializer.SerializeAsync(fileStream, accessToken, _jsonSerializerOptions, ct);
             }
 
-            githubApiHttpClient.SetAccessToken(accessToken.AccessToken);
+            _githubApiHttpClient.SetAccessToken(accessToken.AccessToken);
         }
 
+        /// <summary>
+        /// Releases the resources used by the current instance, including any associated HTTP clients.
+        /// </summary>
+        /// <remarks>This method disposes of the underlying HTTP clients used for GitHub API and Copilot
+        /// interactions. After calling this method, the instance should not be used further.</remarks>
         public void Dispose()
         {
-            githubApiHttpClient.Dispose();
-            githubCopilotHttpClient.Dispose();
+            _githubApiHttpClient.Dispose();
+            _githubCopilotHttpClient.Dispose();
         }
 
+        /// <summary>
+        /// Generates a text completion based on the provided prompt.
+        /// </summary>
+        /// <remarks>This method uses a predefined model and configuration to generate text completions.
+        /// The result is derived from the first choice returned by the completion service.</remarks>
+        /// <param name="prompt">The input text that serves as the basis for generating the completion. This should be a meaningful string
+        /// that guides the completion process.</param>
+        /// <param name="ct">A <see cref="CancellationToken"/> that can be used to cancel the operation. Defaults to <see
+        /// langword="default"/> if not provided.</param>
+        /// <returns>A <see cref="string"/> containing the generated text completion, or <see langword="null"/> if no completion
+        /// is available.</returns>
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
             var chatCompletionsDto = new ChatCompletionsDto
             {
-                FrequencyPenalty = 0,
-                PresencePenalty = 0,
-                Temperature = 0,
-                TopP = 1,
-                N = 1,
+                FrequencyPenalty = _options.FrequencyPenalty,
+                PresencePenalty = _options.PresencePenalty,
+                Temperature = _options.Temperature,
+                TopP = _options.TopP,
+                N = _options.N,
                 Stream = false,
-                Model = AppSettings.Model,
+                Model = _options.Model,
                 Messages =
                 [
                     new Message
@@ -78,7 +155,7 @@ namespace GithubApiProxy
                 ]
             };
 
-            var response = await githubCopilotHttpClient.GetCompletionAsync(chatCompletionsDto, ct);
+            var response = await _githubCopilotHttpClient.GetCompletionAsync(chatCompletionsDto, ct);
 
             return response.Choices.FirstOrDefault()?.Message?.Content ?? null;
         }
