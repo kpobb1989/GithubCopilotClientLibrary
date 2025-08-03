@@ -9,5 +9,6 @@
         public static string EditorPluginVersion { get; } = "copilot-vs-chat/17.14.878.3237";
         public static string GithubApiVersion { get; } = "2022-11-28";
         public static string GithubTokenFileName { get; } = "github_token.json";
+        public static string Model { get; } = "gpt-4.1";
     }
 }

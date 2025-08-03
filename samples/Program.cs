@@ -83,9 +83,6 @@ if (accessToken == null)
 using var githubApiHttpClient = app.Services.GetRequiredService<GithubApiHttpClient>();
 githubApiHttpClient.SetAccessToken(accessToken.AccessToken);
 
-//var userResponse = await githubApiHttpClient.GetUserAsync(); 
-//var copilotToken = await githubApiHttpClient.GetCopilotTokenAsync();
-
 using var githubCopilotHttpClient = app.Services.GetRequiredService<GithubCopilotHttpClient>();
 
 var chatCompletionsDto = new GithubCopilotHttpClient.ChatCompletionsDto
@@ -96,13 +93,13 @@ var chatCompletionsDto = new GithubCopilotHttpClient.ChatCompletionsDto
     TopP = 1,
     N = 1,
     Stream = false,
-    Model = "gpt-4.1",
+    Model = AppSettings.Model,
     Messages = new List<GithubCopilotHttpClient.Message>
     {
         new GithubCopilotHttpClient.Message
         {
             Role = "user",
-            Content = "create request dto based on JSON"
+            Content = "hi"
         }
     }
 };
