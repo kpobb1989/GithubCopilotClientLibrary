@@ -10,7 +10,7 @@ namespace GithubApiProxy.HttpClients.GithubApi
 
         public void SetAccessToken(string accessToken)
         {
-            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", accessToken);
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
         public async Task<UserDto> GetUserAsync(CancellationToken ct = default)

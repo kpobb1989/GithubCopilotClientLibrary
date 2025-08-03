@@ -8,7 +8,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
     {
         public async Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default)
         {
-            var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
+            using var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
 
             var body = new Dictionary<string, string>
             {
@@ -25,7 +25,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
 
         public async Task<AccessTokenDto> GetAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default)
         {
-            var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
+            using var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
 
             var delay = (interval + 1) * 1000;
 
