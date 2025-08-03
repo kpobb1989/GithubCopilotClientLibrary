@@ -1,6 +1,6 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.Extensions;
-using GithubApiProxy.HttpClients.GithubCopilot.DTO;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

@@ -1,7 +1,10 @@
 ﻿using GithubApiProxy.Abstractions;
 using GithubApiProxy.Abstractions.HttpClients;
+using GithubApiProxy.DTO;
 using GithubApiProxy.Extensions;
-using GithubApiProxy.HttpClients.GithubCopilot.DTO;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Json;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Usage;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -136,6 +139,21 @@ namespace GithubApiProxy
             _logger.LogInformation("Authentication successful. You can now use the GitHub Copilot API.");
         }
 
+        public async Task<GithubCopiotUsage> GetCopilotUsageAsync(CancellationToken ct = default)
+        {
+            await AutoSignInAsync(ct);
+
+            var response = await _githubApiHttpClient.GetCopilonUsageAsync(ct);
+
+            return new GithubCopiotUsage
+            {
+                CopilotPlan = response.CopilotPlan,
+                QuotaResetDate = response.QuotaResetDate,
+                Chat = MapQuotaDetail(response.QuotaSnapshots.Chat),
+                Completions = MapQuotaDetail(response.QuotaSnapshots.Completions),
+                Premium = MapQuotaDetail(response.QuotaSnapshots.PremiumInteractions)
+            };
+        }
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
             await AutoSignInAsync(ct);
@@ -221,6 +239,16 @@ namespace GithubApiProxy
             {
                 await AuthenticateAsync(ct: ct);
             }
+        }
+        private GithubCopilotQuota MapQuotaDetail(QuotaDetail detail)
+        {
+            return new GithubCopilotQuota
+            {
+                Entitlement = detail.Entitlement,
+                PercentRemaining = detail.PercentRemaining,
+                QuotaRemaining = detail.QuotaRemaining,
+                Unlimited = detail.Unlimited
+            };
         }
 
         private ChatCompletionRequest GetCompletionRequest(string prompt, bool stream = false, ResponseFormat? responseFormat = null)

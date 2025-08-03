@@ -1,6 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using GithubApiProxy.HttpClients.GithubCopilot.DTO.Json;
+using Newtonsoft.Json;
 
-namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
+namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
     public class ChatCompletionRequest
     {

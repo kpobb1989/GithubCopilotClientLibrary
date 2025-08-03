@@ -1,4 +1,4 @@
-﻿using GithubApiProxy.HttpClients.GithubCopilot.DTO;
+﻿using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming;
 using System.Runtime.CompilerServices;
 

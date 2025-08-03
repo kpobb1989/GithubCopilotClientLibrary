@@ -1,4 +1,5 @@
 ﻿using GithubApiProxy.HttpClients.GithubApi.DTO;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Usage;
 
 namespace GithubApiProxy.Abstractions.HttpClients
 {
@@ -7,5 +8,7 @@ namespace GithubApiProxy.Abstractions.HttpClients
         void SetAccessToken(string accessToken);
 
         Task<CopilotTokenDto> GetCopilotTokenAsync(CancellationToken ct = default);
+
+        Task<CopilotUsageResponse> GetCopilonUsageAsync(CancellationToken ct = default);
     }
 }

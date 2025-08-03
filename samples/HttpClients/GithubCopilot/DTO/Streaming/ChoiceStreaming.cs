@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
+using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming
 {

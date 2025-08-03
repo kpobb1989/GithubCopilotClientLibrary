@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
+namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
     public class ChoiceNonStreaming
     {
