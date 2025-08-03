@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
-    public class Message
+    internal class Message
     {
         [JsonProperty("role")]
         public string Role { get; set; } = null!;

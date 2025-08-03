@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
-    public class Tool
+    internal class Tool
     {
         [JsonProperty("type")]
         public string Type { get; set; } = null!;

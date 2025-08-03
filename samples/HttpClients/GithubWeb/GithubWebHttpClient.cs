@@ -7,7 +7,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
 {
     internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory, JsonSerializer jsonSerializer, GithubCopilotOptions options) : IGithubWebHttpClient
     {
-        public async Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default)
+        public async Task<DeviceCodeResponse> GetDeviceCodeAsync(CancellationToken ct = default)
         {
             using var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
 
@@ -17,10 +17,10 @@ namespace GithubApiProxy.HttpClients.GithubWeb
                 { "scope", options.Scope }
             };
 
-            return await client.ExecuteAndGetJsonAsync<DeviceCodeDto>("login/device/code", HttpMethod.Post, jsonSerializer, body, ct);
+            return await client.ExecuteAndGetJsonAsync<DeviceCodeResponse>("login/device/code", HttpMethod.Post, jsonSerializer, body, ct);
         }
 
-        public async Task<AccessTokenDto> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default)
+        public async Task<AccessTokenResponse> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default)
         {
             using var client = httpClientFactory.CreateClient(nameof(GithubWebHttpClient));
 
@@ -59,7 +59,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
 
                 memoryStream.Position = 0;
 
-                return jsonSerializer.Deserialize<AccessTokenDto>(memoryStream) ?? throw new Exception($"Can not deserialize {nameof(AccessTokenDto)}"); ;
+                return jsonSerializer.Deserialize<AccessTokenResponse>(memoryStream) ?? throw new Exception($"Can not deserialize {nameof(AccessTokenResponse)}"); ;
             }
         }
     }

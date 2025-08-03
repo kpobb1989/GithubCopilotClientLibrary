@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace GithubApiProxy.DTO
+﻿namespace GithubApiProxy.DTO
 {
     public class GithubCopilotQuota
     {

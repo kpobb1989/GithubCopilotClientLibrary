@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
-    public class ChoiceNonStreaming
+    internal class ChoiceNonStreaming
     {
         [JsonProperty("index")]
         public int Index { get; set; }

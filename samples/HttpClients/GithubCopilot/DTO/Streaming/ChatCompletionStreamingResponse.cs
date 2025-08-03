@@ -3,8 +3,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming
 {
-
-    public class ChatCompletionStreamingResponse
+    internal class ChatCompletionStreamingResponse
     {
         [JsonProperty("choices")]
         public List<ChoiceStreaming> Choices { get; set; } = [];

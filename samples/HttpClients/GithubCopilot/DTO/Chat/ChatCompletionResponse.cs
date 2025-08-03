@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
-    public class ChatCompletionResponse
+    internal class ChatCompletionResponse
     {
 
         [JsonProperty("object")]

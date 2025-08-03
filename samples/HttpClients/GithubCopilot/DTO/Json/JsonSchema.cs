@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Json
 {
-    public class JsonSchema
+    internal class JsonSchema
     {
         [JsonProperty("schema")]
         public object? Schema { get; set; }

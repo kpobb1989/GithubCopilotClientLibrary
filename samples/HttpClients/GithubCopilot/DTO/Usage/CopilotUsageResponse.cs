@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Usage
 {
-    public class CopilotUsageResponse
+    internal class CopilotUsageResponse
     {
         [JsonProperty("access_type_sku")]
         public string AccessTypeSku { get; set; } = string.Empty;

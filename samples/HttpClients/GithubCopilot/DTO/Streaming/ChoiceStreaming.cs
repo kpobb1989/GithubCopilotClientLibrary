@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming
 {
-    public class ChoiceStreaming
+    internal class ChoiceStreaming
     {
         [JsonProperty("index")]
         public int Index { get; set; }

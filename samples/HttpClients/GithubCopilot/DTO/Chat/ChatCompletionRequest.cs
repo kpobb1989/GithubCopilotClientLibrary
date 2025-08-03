@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
-    public class ChatCompletionRequest
+    internal class ChatCompletionRequest
     {
         [JsonProperty("messages")]
         public IEnumerable<Message> Messages { get; set; } = [];

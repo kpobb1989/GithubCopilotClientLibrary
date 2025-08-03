@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Usage
 {
-    public class QuotaSnapshots
+    internal class QuotaSnapshots
     {
         [JsonProperty("chat")]
         public QuotaDetail Chat { get; set; } = new();

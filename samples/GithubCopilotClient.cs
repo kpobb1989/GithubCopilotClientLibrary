@@ -17,6 +17,8 @@ namespace GithubApiProxy
 {
     public class GithubCopilotClient : IGithubCopilotClient
     {
+        private List<Message> ConversationHistory { get; set; } = [];
+
         private readonly IGithubApiHttpClient _githubApiHttpClient;
         private readonly IGithubWebHttpClient _githubWebHttpClient;
         private readonly IGithubCopilotHttpClient _githubCopilotHttpClient;
@@ -28,35 +30,6 @@ namespace GithubApiProxy
 
         private string? githubAccessToken = null;
 
-        public List<Message> ConversationHistory { get; set; } = [];
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, providing access to GitHub API,
-        /// web, and Copilot-specific HTTP clients, as well as configuration options.
-        /// </summary>
-        /// <remarks>This constructor is designed to initialize the client with the necessary dependencies
-        /// for interacting with GitHub services. Ensure that all provided dependencies are properly configured before
-        /// instantiating the client.</remarks>
-        /// <param name="githubApiHttpClient">An instance of <see cref="IGithubApiHttpClient"/> used to interact with GitHub's API.</param>
-        /// <param name="githubWebHttpClient">An instance of <see cref="IGithubWebHttpClient"/> used to perform web-based HTTP operations with GitHub.</param>
-        /// <param name="githubCopilotHttpClient">An instance of <see cref="IGithubCopilotHttpClient"/> used to interact with GitHub Copilot-specific
-        /// endpoints.</param>
-        /// <param name="options">A <see cref="GithubCopilotOptions"/> object containing configuration settings for the client.</param>
-        public GithubCopilotClient(
-            IGithubApiHttpClient githubApiHttpClient,
-            IGithubWebHttpClient githubWebHttpClient,
-            IGithubCopilotHttpClient githubCopilotHttpClient,
-            ILogger<GithubCopilotClient> logger,
-            JsonSerializer jsonSerializer,
-            GithubCopilotOptions options)
-        {
-            _githubApiHttpClient = githubApiHttpClient;
-            _githubWebHttpClient = githubWebHttpClient;
-            _githubCopilotHttpClient = githubCopilotHttpClient;
-            _jsonSerializer = jsonSerializer;
-            _logger = logger;
-            _options = options;
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, configuring it with the specified
@@ -85,6 +58,22 @@ namespace GithubApiProxy
             _options = options;
         }
 
+        internal GithubCopilotClient(
+            IGithubApiHttpClient githubApiHttpClient,
+            IGithubWebHttpClient githubWebHttpClient,
+            IGithubCopilotHttpClient githubCopilotHttpClient,
+            ILogger<GithubCopilotClient> logger,
+            JsonSerializer jsonSerializer,
+            GithubCopilotOptions options)
+        {
+            _githubApiHttpClient = githubApiHttpClient;
+            _githubWebHttpClient = githubWebHttpClient;
+            _githubCopilotHttpClient = githubCopilotHttpClient;
+            _jsonSerializer = jsonSerializer;
+            _logger = logger;
+            _options = options;
+        }
+
         public void Dispose()
         {
             _githubApiHttpClient.Dispose();
@@ -98,7 +87,7 @@ namespace GithubApiProxy
                 return;
             }
 
-            AccessTokenDto? accessToken = null;
+            AccessTokenResponse? accessToken = null;
 
             var githubTokenPath = Path.Combine(AppContext.BaseDirectory, _options.GithubTokenFileName);
 
@@ -106,7 +95,7 @@ namespace GithubApiProxy
             {
                 using var fileStream = File.OpenRead(githubTokenPath);
 
-                accessToken = _jsonSerializer.Deserialize<AccessTokenDto>(fileStream);
+                accessToken = _jsonSerializer.Deserialize<AccessTokenResponse>(fileStream);
             }
             if (accessToken == null)
             {
@@ -205,7 +194,7 @@ namespace GithubApiProxy
             return _jsonSerializer.Deserialize<T>(message.Content);
         }
 
-        public async IAsyncEnumerable<Message?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
+        public async IAsyncEnumerable<string?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
         {
             await AutoSignInAsync(ct);
 
@@ -222,7 +211,7 @@ namespace GithubApiProxy
                     chunks.Add(message);
                 }
 
-                yield return message;
+                yield return message?.Content;
             }
 
             if (_options.KeepConversationHistory && chunks.Count > 0)
@@ -240,7 +229,7 @@ namespace GithubApiProxy
                 await AuthenticateAsync(ct: ct);
             }
         }
-        private GithubCopilotQuota MapQuotaDetail(QuotaDetail detail)
+        private static GithubCopilotQuota MapQuotaDetail(QuotaDetail detail)
         {
             return new GithubCopilotQuota
             {

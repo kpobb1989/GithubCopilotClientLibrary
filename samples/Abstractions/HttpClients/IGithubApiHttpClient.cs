@@ -3,11 +3,11 @@ using GithubApiProxy.HttpClients.GithubCopilot.DTO.Usage;
 
 namespace GithubApiProxy.Abstractions.HttpClients
 {
-    public interface IGithubApiHttpClient : IDisposable
+    internal interface IGithubApiHttpClient : IDisposable
     {
         void SetAccessToken(string accessToken);
 
-        Task<CopilotTokenDto> GetCopilotTokenAsync(CancellationToken ct = default);
+        Task<CopilotTokenResponse> GetCopilotTokenAsync(CancellationToken ct = default);
 
         Task<CopilotUsageResponse> GetCopilonUsageAsync(CancellationToken ct = default);
     }

@@ -16,11 +16,11 @@ namespace GithubApiProxy.HttpClients.GithubApi
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
-        public async Task<CopilotTokenDto> GetCopilotTokenAsync(CancellationToken ct = default)
-            => await _client.ExecuteAndGetJsonAsync<CopilotTokenDto>("copilot_internal/v2/token", HttpMethod.Get, jsonSerializer, ct: ct) ?? throw new Exception($"Can not deserialize {nameof(CopilotTokenDto)}");
+        public async Task<CopilotTokenResponse> GetCopilotTokenAsync(CancellationToken ct = default)
+            => await _client.ExecuteAndGetJsonAsync<CopilotTokenResponse>("copilot_internal/v2/token", HttpMethod.Get, jsonSerializer, ct: ct) ?? throw new Exception($"Can not deserialize {nameof(CopilotTokenResponse)}");
 
         public async Task<CopilotUsageResponse> GetCopilonUsageAsync(CancellationToken ct = default)
-            => await _client.ExecuteAndGetJsonAsync<CopilotUsageResponse>("copilot_internal/user", HttpMethod.Get, jsonSerializer, ct: ct) ?? throw new Exception($"Can not deserialize {nameof(CopilotTokenDto)}");
+            => await _client.ExecuteAndGetJsonAsync<CopilotUsageResponse>("copilot_internal/user", HttpMethod.Get, jsonSerializer, ct: ct) ?? throw new Exception($"Can not deserialize {nameof(CopilotTokenResponse)}");
 
 
         public void Dispose()

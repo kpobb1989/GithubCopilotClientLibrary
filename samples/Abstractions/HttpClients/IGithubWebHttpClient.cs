@@ -2,10 +2,10 @@
 
 namespace GithubApiProxy.Abstractions.HttpClients
 {
-    public interface IGithubWebHttpClient
+    internal interface IGithubWebHttpClient
     {
-        Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default);
+        Task<DeviceCodeResponse> GetDeviceCodeAsync(CancellationToken ct = default);
 
-        Task<AccessTokenDto> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default);
+        Task<AccessTokenResponse> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default);
     }
 }

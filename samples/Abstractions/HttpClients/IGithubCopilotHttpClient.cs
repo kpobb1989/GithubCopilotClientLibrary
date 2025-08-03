@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace GithubApiProxy.Abstractions.HttpClients
 {
-    public interface IGithubCopilotHttpClient : IDisposable
+    internal interface IGithubCopilotHttpClient : IDisposable
     {
         Task<ChatCompletionResponse> GetChatCompletionAsync(ChatCompletionRequest body, CancellationToken ct = default);
 

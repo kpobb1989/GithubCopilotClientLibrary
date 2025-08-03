@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Json
 {
-    public class ResponseFormat
+    internal class ResponseFormat
     {
         [JsonProperty("type")]
         public string? Type { get; set; }
