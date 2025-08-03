@@ -3,8 +3,11 @@ using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 namespace GithubApiProxy
@@ -126,31 +129,47 @@ namespace GithubApiProxy
 
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
-            var request = GetCompletionRequest(prompt, stream: false);
+            var request = GetCompletionRequest(prompt);
 
             var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
 
-            var messge = response.Choices?.FirstOrDefault()?.Message;
+            var message = response.Choices?.FirstOrDefault()?.Message;
 
-            if (_options.KeepConversationHistory && messge != null)
+            if (_options.KeepConversationHistory && message != null)
             {
-                ConversationHistory.Add(messge);
+                ConversationHistory.Add(message);
             }
 
-            return messge?.Content ?? null;
+            return message?.Content ?? null;
         }
 
         public async IAsyncEnumerable<Message?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var request = GetCompletionRequest(prompt, stream: true);
 
+            var chunks = new StringBuilder();
+
             await foreach (var chunk in _githubCopilotHttpClient.GetChatCompletionStreamingAsync(request, ct: ct))
             {
-                yield return chunk?.Choices?.FirstOrDefault()?.Delta;
+                var message = chunk?.Choices?.FirstOrDefault()?.Delta;
+
+                chunks.Append(message?.Content);
+
+                yield return message;
+            }
+
+            if (chunks.Length > 0)
+            {
+                var completeMessage = new Message("assistant", chunks.ToString());
+
+                if (_options.KeepConversationHistory)
+                {
+                    ConversationHistory.Add(completeMessage);
+                }
             }
         }
 
-        private ChatCompletionRequest GetCompletionRequest(string prompt, bool stream)
+        private ChatCompletionRequest GetCompletionRequest(string prompt, bool stream = false)
         {
             return new ChatCompletionRequest
             {
