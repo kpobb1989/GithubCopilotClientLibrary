@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubWeb.DTO
 {
-    internal class DeviceCodeDto
+    public class DeviceCodeDto
     {
         [JsonPropertyName("device_code")]
         public string DeviceCode { get; init; } = null!;

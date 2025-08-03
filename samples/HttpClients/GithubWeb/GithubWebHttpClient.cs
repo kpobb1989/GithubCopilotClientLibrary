@@ -1,10 +1,11 @@
-﻿using GithubApiProxy.HttpClients.GithubWeb.DTO;
+﻿using GithubApiProxy.Abstractions.HttpClients;
+using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace GithubApiProxy.HttpClients.GithubWeb
 {
-    internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory)
+    internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory) : IGithubWebHttpClient
     {
         public async Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default)
         {

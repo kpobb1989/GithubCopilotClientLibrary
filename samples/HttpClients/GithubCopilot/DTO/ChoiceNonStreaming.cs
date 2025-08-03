@@ -2,20 +2,17 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot
 {
-    internal partial class GithubCopilotHttpClient
+    public class ChoiceNonStreaming
     {
-        public class ChoiceNonStreaming
-        {
-            [JsonPropertyName("index")]
-            public int Index { get; set; }
+        [JsonPropertyName("index")]
+        public int Index { get; set; }
 
-            [JsonPropertyName("message")]
-            public GithubCopilotHttpClient.Message? Message { get; set; }
+        [JsonPropertyName("message")]
+        public Message? Message { get; set; }
 
-            [JsonPropertyName("finish_reason")]
-            public string? FinishReason { get; set; }
+        [JsonPropertyName("finish_reason")]
+        public string? FinishReason { get; set; }
 
-            // Add other properties if needed
-        }
+        // Add other properties if needed
     }
 }

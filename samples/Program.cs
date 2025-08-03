@@ -1,14 +1,19 @@
 ﻿using GithubApiProxy;
+using GithubApiProxy.Abstractions;
+using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.HttpClients.GithubApi;
 using GithubApiProxy.HttpClients.GithubCopilot;
 using GithubApiProxy.HttpClients.GithubWeb;
-using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Diagnostics;
-using System.Text.Json;
+using Microsoft.Extensions.Logging;
+
+// Properly display special characters like emojis
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
 builder.Services.AddHttpClient(nameof(GithubWebHttpClient), client =>
 {
@@ -20,8 +25,6 @@ builder.Services.AddHttpClient(nameof(GithubApiHttpClient), client =>
 {
     client.BaseAddress = new Uri("https://api.github.com");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
-    client.DefaultRequestHeaders.Add("Editor-Version", AppSettings.EditorVersion);
-    client.DefaultRequestHeaders.Add("Editor-Plugin-Version", AppSettings.EditorPluginVersion);
     client.DefaultRequestHeaders.Add("User-Agent", AppSettings.UserAgent);
     client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", AppSettings.GithubApiVersion);
 });
@@ -30,80 +33,29 @@ builder.Services.AddHttpClient(nameof(GithubCopilotHttpClient), client =>
 {
     client.BaseAddress = new Uri("https://api.individual.githubcopilot.com");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
-    client.DefaultRequestHeaders.Add("Copilot-Integration-Id", "vscode-chat");
     client.DefaultRequestHeaders.Add("Editor-Version", AppSettings.EditorVersion);
-    client.DefaultRequestHeaders.Add("User-Agent", AppSettings.UserAgent);
-    client.DefaultRequestHeaders.Add("Openai-Intent", "conversation-panel");
     client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2025-04-01");
-    client.DefaultRequestHeaders.Add("X-Request-Id", Guid.NewGuid().ToString());
-    client.DefaultRequestHeaders.Add("X-Vscode-User-Agent-Library-Version", "electron-fetch");
 });
 
-// Register services
-builder.Services.AddSingleton<GithubWebHttpClient>();
-builder.Services.AddSingleton<GithubApiHttpClient>();
-builder.Services.AddSingleton<GithubCopilotHttpClient>();
+// Register http clients
+builder.Services.AddSingleton<IGithubWebHttpClient, GithubWebHttpClient>();
+builder.Services.AddSingleton<IGithubApiHttpClient, GithubApiHttpClient>();
+builder.Services.AddSingleton<IGithubCopilotHttpClient, GithubCopilotHttpClient>();
+builder.Services.AddSingleton<IGithubCopilotClient, GithubCopilotClient>();
 
 var app = builder.Build();
 
-AccessTokenDto? accessToken = null;
+var githubCopilotService = app.Services.GetRequiredService<IGithubCopilotClient>();
+await githubCopilotService.AuthenticateAsync();
+Console.WriteLine("Authentication successful. You can now use the GitHub Copilot API.");
 
-var githubTokenPath = Path.Combine(AppContext.BaseDirectory, AppSettings.GithubTokenFileName);
+Console.WriteLine("Enter a prompt for GitHub Copilot:");
 
-if (File.Exists(githubTokenPath))
+while (true)
 {
-    using var fileStream = File.OpenRead(githubTokenPath);
+    var prompt = Console.ReadLine();
 
-    accessToken = await JsonSerializer.DeserializeAsync<AccessTokenDto>(fileStream);
+    var text = await githubCopilotService.GetTextCompletionAsync(prompt!);
+
+    Console.WriteLine(text);
 }
-
-if (accessToken == null)
-{
-    var githubWebHttpClient = app.Services.GetRequiredService<GithubWebHttpClient>();
-    var deviceCode = await githubWebHttpClient.GetDeviceCodeAsync();
-
-    Console.WriteLine($"Please enter the code {deviceCode.UserCode} in ${deviceCode.VerificationUri}");
-
-    Process.Start(new ProcessStartInfo
-    {
-        FileName = deviceCode.VerificationUri,
-        UseShellExecute = true
-    });
-
-    accessToken = await githubWebHttpClient.GetAccessTokenAsync(deviceCode.DeviceCode, deviceCode.Interval);
-
-    using var fileStream = File.Create(githubTokenPath);
-    await JsonSerializer.SerializeAsync(
-        fileStream,
-        accessToken,
-        new JsonSerializerOptions { WriteIndented = true }
-    );
-}
-
-using var githubApiHttpClient = app.Services.GetRequiredService<GithubApiHttpClient>();
-githubApiHttpClient.SetAccessToken(accessToken.AccessToken);
-
-using var githubCopilotHttpClient = app.Services.GetRequiredService<GithubCopilotHttpClient>();
-
-var chatCompletionsDto = new GithubCopilotHttpClient.ChatCompletionsDto
-{
-    FrequencyPenalty = 0,
-    PresencePenalty = 0,
-    Temperature = 0,
-    TopP = 1,
-    N = 1,
-    Stream = false,
-    Model = AppSettings.Model,
-    Messages = new List<GithubCopilotHttpClient.Message>
-    {
-        new GithubCopilotHttpClient.Message
-        {
-            Role = "user",
-            Content = "hi"
-        }
-    }
-};
-
-var data = await githubCopilotHttpClient.GetCompletionAsync(chatCompletionsDto);
-
-Console.ReadKey();

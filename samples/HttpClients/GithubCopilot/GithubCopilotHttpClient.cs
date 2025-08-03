@@ -1,23 +1,15 @@
-﻿using GithubApiProxy.HttpClients.GithubApi;
+﻿using GithubApiProxy.Abstractions.HttpClients;
 using System.Net.Http.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot
 {
-    internal partial class GithubCopilotHttpClient : IDisposable
+    internal class GithubCopilotHttpClient(IHttpClientFactory httpClientFactory, IGithubApiHttpClient githubApiHttpClient) : IGithubCopilotHttpClient
     {
-        private readonly HttpClient _httpClient;
-        private readonly GithubApiHttpClient _githubApiHttpClient;
+        private readonly HttpClient _httpClient = httpClientFactory.CreateClient(nameof(GithubCopilotHttpClient));
 
         private string? _githubCopilotToken;
         private DateTimeOffset _expiresAt = DateTimeOffset.MinValue;
         private readonly SemaphoreSlim _semaphore = new(1, 1);
-
-        public GithubCopilotHttpClient(IHttpClientFactory httpClientFactory, GithubApiHttpClient githubApiHttpClient)
-        {
-            _httpClient = httpClientFactory.CreateClient(nameof(GithubCopilotHttpClient));
-
-            _githubApiHttpClient = githubApiHttpClient;
-        }
 
         public async Task<ChatCompletionResponse> GetCompletionAsync(ChatCompletionsDto body, CancellationToken ct = default)
         {
@@ -49,7 +41,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
                 // Refresh if token missing or about to expire (buffer: 60s)
                 if (_githubCopilotToken == null || DateTimeOffset.UtcNow.AddSeconds(60) >= _expiresAt)
                 {
-                    var newToken = await _githubApiHttpClient.GetCopilotTokenAsync(ct);
+                    var newToken = await githubApiHttpClient.GetCopilotTokenAsync(ct);
                     _githubCopilotToken = newToken.Token;
                     _expiresAt = DateTimeOffset.FromUnixTimeSeconds(newToken.ExpiresAt);
                 }

@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubWeb.DTO
 {
-    internal class AccessTokenDto
+    public class AccessTokenDto
     {
         [JsonPropertyName("access_token")]
         public string AccessToken { get; init; } = null!;

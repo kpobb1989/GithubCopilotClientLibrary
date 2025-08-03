@@ -2,7 +2,7 @@
 
 namespace GithubApiProxy.HttpClients.GithubApi.DTO
 {
-    internal class CopilotTokenDto
+    public class CopilotTokenDto
     {
         [JsonPropertyName("token")]
         public string Token { get; init; } = null!;
