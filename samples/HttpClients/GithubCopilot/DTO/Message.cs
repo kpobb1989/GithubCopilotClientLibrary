@@ -1,14 +1,14 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class Message
     {
-        [JsonPropertyName("role")]
-        public string Role { get; set; } = string.Empty;
+        [JsonProperty("role")]
+        public string Role { get; set; } = null!;
 
-        [JsonPropertyName("content")]
-        public string Content { get; set; } = string.Empty;
+        [JsonProperty("content")]
+        public string Content { get; set; } = null!;
 
         public Message() { }
 

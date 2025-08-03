@@ -1,11 +1,11 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
-using System.Net.Http.Json;
-using System.Text.Json;
+using Newtonsoft.Json;
+using GithubApiProxy.Extensions;
 
 namespace GithubApiProxy.HttpClients.GithubWeb
 {
-    internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory, GithubCopilotOptions options) : IGithubWebHttpClient
+    internal class GithubWebHttpClient(IHttpClientFactory httpClientFactory, JsonSerializer jsonSerializer, GithubCopilotOptions options) : IGithubWebHttpClient
     {
         public async Task<DeviceCodeDto> GetDeviceCodeAsync(CancellationToken ct = default)
         {
@@ -17,11 +17,7 @@ namespace GithubApiProxy.HttpClients.GithubWeb
                 { "scope", options.Scope }
             };
 
-            var httpResponse = await client.PostAsJsonAsync("login/device/code", body, ct);
-
-            httpResponse.EnsureSuccessStatusCode();
-
-            return await httpResponse.Content.ReadFromJsonAsync<DeviceCodeDto>(ct) ?? throw new Exception($"Can not deserialize {nameof(DeviceCodeDto)}");
+            return await client.ExecuteAndGetJsonAsync<DeviceCodeDto>("login/device/code", HttpMethod.Post, jsonSerializer, body, ct);
         }
 
         public async Task<AccessTokenDto> WaitForAccessTokenAsync(string deviceCode, int interval, CancellationToken ct = default)
@@ -39,15 +35,13 @@ namespace GithubApiProxy.HttpClients.GithubWeb
 
             while (true)
             {
-                var httpResponse = await client.PostAsJsonAsync("login/oauth/access_token", body, ct);
-
-                using var responseStream = await httpResponse.Content.ReadAsStreamAsync(ct);
+                using var responseStream = await client.ExecuteAndGetStreamAsync("login/oauth/access_token", HttpMethod.Post, jsonSerializer, body, ct);
 
                 using var memoryStream = new MemoryStream();
                 await responseStream.CopyToAsync(memoryStream, ct);
                 memoryStream.Position = 0;
 
-                var error = await JsonSerializer.DeserializeAsync<OAuthErrorDto>(memoryStream, cancellationToken: ct);
+                var error = jsonSerializer.Deserialize<OAuthErrorDto>(memoryStream);
 
                 if (!string.IsNullOrEmpty(error?.Error))
                 {
@@ -64,9 +58,9 @@ namespace GithubApiProxy.HttpClients.GithubWeb
                 }
 
                 memoryStream.Position = 0;
-                return await JsonSerializer.DeserializeAsync<AccessTokenDto>(memoryStream, cancellationToken: ct) ?? throw new Exception($"Can not deserialize {nameof(AccessTokenDto)}"); ;
+
+                return jsonSerializer.Deserialize<AccessTokenDto>(memoryStream) ?? throw new Exception($"Can not deserialize {nameof(AccessTokenDto)}"); ;
             }
         }
-
     }
 }

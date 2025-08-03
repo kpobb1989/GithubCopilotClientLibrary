@@ -1,11 +1,12 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
+using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubApi.DTO;
+using Newtonsoft.Json;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 
 namespace GithubApiProxy.HttpClients.GithubApi
 {
-    internal class GithubApiHttpClient(IHttpClientFactory httpClientFactory) : IGithubApiHttpClient
+    internal class GithubApiHttpClient(IHttpClientFactory httpClientFactory, JsonSerializer jsonSerializer) : IGithubApiHttpClient
     {
         private readonly HttpClient _client = httpClientFactory.CreateClient(nameof(GithubApiHttpClient));
 
@@ -15,7 +16,7 @@ namespace GithubApiProxy.HttpClients.GithubApi
         }
 
         public async Task<CopilotTokenDto> GetCopilotTokenAsync(CancellationToken ct = default)
-            => await _client.GetFromJsonAsync<CopilotTokenDto>("copilot_internal/v2/token", cancellationToken: ct) ?? throw new Exception($"Can not deserialize {nameof(CopilotTokenDto)}");
+            => await _client.ExecuteAndGetJsonAsync<CopilotTokenDto>("copilot_internal/v2/token", HttpMethod.Get, jsonSerializer, ct: ct) ?? throw new Exception($"Can not deserialize {nameof(CopilotTokenDto)}");
 
         public void Dispose()
         {

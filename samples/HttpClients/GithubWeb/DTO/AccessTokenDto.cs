@@ -1,16 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubWeb.DTO
 {
     public class AccessTokenDto
     {
-        [JsonPropertyName("access_token")]
+        [JsonProperty("access_token")]
         public string AccessToken { get; init; } = null!;
 
-        [JsonPropertyName("token_type")]
+        [JsonProperty("token_type")]
         public string TokenType { get; init; } = null!;
 
-        [JsonPropertyName("scope")]
+        [JsonProperty("scope")]
         public string Scope { get; init; } = null!;
     }
 }

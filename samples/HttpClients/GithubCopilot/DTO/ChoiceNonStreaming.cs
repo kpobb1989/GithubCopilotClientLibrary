@@ -1,16 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class ChoiceNonStreaming
     {
-        [JsonPropertyName("index")]
+        [JsonProperty("index")]
         public int Index { get; set; }
 
-        [JsonPropertyName("message")]
+        [JsonProperty("message")]
         public Message? Message { get; set; }
 
-        [JsonPropertyName("finish_reason")]
+        [JsonProperty("finish_reason")]
         public string? FinishReason { get; set; }
     }
 }

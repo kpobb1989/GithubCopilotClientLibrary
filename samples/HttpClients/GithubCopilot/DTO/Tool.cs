@@ -1,10 +1,10 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class Tool
     {
-        [JsonPropertyName("type")]
-        public string Type { get; set; } = string.Empty;
+        [JsonProperty("type")]
+        public string Type { get; set; } = null!;
     }
 }

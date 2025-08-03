@@ -1,13 +1,17 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
+using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+using System.Text;
+using System.Xml.Linq;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot
 {
-    internal class GithubCopilotHttpClient(IHttpClientFactory httpClientFactory, IGithubApiHttpClient githubApiHttpClient) : IGithubCopilotHttpClient
+    internal class GithubCopilotHttpClient(IHttpClientFactory httpClientFactory, IGithubApiHttpClient githubApiHttpClient, JsonSerializer jsonSerializer) : IGithubCopilotHttpClient
     {
         private readonly HttpClient _httpClient = httpClientFactory.CreateClient(nameof(GithubCopilotHttpClient));
 
@@ -19,38 +23,20 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
         {
             var token = await GetValidCopilotTokenAsync(ct);
 
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
-            {
-                Content = JsonContent.Create(request)
-            };
-            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            _httpClient.AddOrReplaceHeader("Authorization", $"Bearer {token}");
 
-            var httpResponse = await _httpClient.SendAsync(httpRequest, ct);
-
-            httpResponse.EnsureSuccessStatusCode();
-
-            return await httpResponse.Content.ReadFromJsonAsync<ChatCompletionResponse>(cancellationToken: ct)
-                ?? throw new Exception($"Cannot deserialize {nameof(ChatCompletionResponse)}");
+            return await _httpClient.ExecuteAndGetJsonAsync<ChatCompletionResponse>("chat/completions", HttpMethod.Post, jsonSerializer, request, ct);
         }
 
         public async IAsyncEnumerable<ChatCompletionStreamingResponse> GetChatCompletionStreamingAsync(ChatCompletionRequest request, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var token = await GetValidCopilotTokenAsync(ct);
 
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
-            {
-                Content = JsonContent.Create(request)
-            };
-
-            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-           
-            var httpResponse = await _httpClient.SendAsync(httpRequest, ct);
-
-            httpResponse.EnsureSuccessStatusCode();
+            _httpClient.AddOrReplaceHeader("Authorization", $"Bearer {token}");
 
             if (request.Stream)
             {
-                using var stream = await httpResponse.Content.ReadAsStreamAsync();
+                using var stream = await _httpClient.ExecuteAndGetStreamAsync("chat/completions", HttpMethod.Post, jsonSerializer, request, ct);
 
                 using var reader = new StreamReader(stream);
 
@@ -61,7 +47,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
                         break;
                     }
 
-                    var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                    var line = await reader.ReadLineAsync(ct);
 
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
@@ -73,7 +59,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
                     // Skip [DONE] or other non-JSON data
                     if (json == "[DONE]") continue;
 
-                    var response = JsonSerializer.Deserialize<ChatCompletionStreamingResponse>(json);
+                    var response = jsonSerializer.Deserialize<ChatCompletionStreamingResponse>(json);
 
                     if (response != null)
                     {

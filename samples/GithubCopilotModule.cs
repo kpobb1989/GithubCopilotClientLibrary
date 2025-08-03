@@ -4,6 +4,9 @@ using GithubApiProxy.HttpClients.GithubApi;
 using GithubApiProxy.HttpClients.GithubCopilot;
 using GithubApiProxy.HttpClients.GithubWeb;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace GithubApiProxy
 {
@@ -35,12 +38,22 @@ namespace GithubApiProxy
                 client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2025-04-01");
             });
 
-            // Register http clients
             services.AddSingleton<IGithubWebHttpClient, GithubWebHttpClient>();
             services.AddSingleton<IGithubApiHttpClient, GithubApiHttpClient>();
             services.AddSingleton<IGithubCopilotHttpClient, GithubCopilotHttpClient>();
             services.AddSingleton<IGithubCopilotClient, GithubCopilotClient>();
+
             services.AddSingleton(options);
+
+            services.AddSingleton(JsonSerializer.Create(new JsonSerializerSettings()
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                NullValueHandling = NullValueHandling.Ignore,
+                Converters =
+                [
+                    new StringEnumConverter(new CamelCaseNamingStrategy())
+                ]
+            }));
         }
     }
 }

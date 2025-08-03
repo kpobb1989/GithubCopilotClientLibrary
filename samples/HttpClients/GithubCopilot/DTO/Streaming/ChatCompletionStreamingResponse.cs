@@ -1,11 +1,12 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
+
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming
 {
 
     public class ChatCompletionStreamingResponse
     {
-        [JsonPropertyName("choices")]
+        [JsonProperty("choices")]
         public List<ChoiceStreaming> Choices { get; set; } = [];
     }
 }

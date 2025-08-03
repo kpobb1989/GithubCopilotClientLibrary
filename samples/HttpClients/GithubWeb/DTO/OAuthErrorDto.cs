@@ -1,13 +1,13 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubWeb.DTO
 {
     internal class OAuthErrorDto
     {
-        [JsonPropertyName("error")]
-        public string Error { get; set; } = string.Empty;
+        [JsonProperty("error")]
+        public string? Error { get; set; }
 
-        [JsonPropertyName("error_description")]
+        [JsonProperty("error_description")]
         public string? ErrorDescription { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using GithubApiProxy.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel;
 
 // Properly display special characters like emojis
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -37,47 +38,69 @@ Console.WriteLine("Enter a prompt for GitHub Copilot:");
 //    Console.WriteLine(text);
 //}
 
-var cts = new CancellationTokenSource();
+//var cts = new CancellationTokenSource();
 
-Console.WriteLine("CTRL+C to terminate the conversation.");
-#pragma warning disable CS4014
-Task.Run(async () =>
+//Console.WriteLine("CTRL+C to terminate the conversation.");
+//#pragma warning disable CS4014
+//Task.Run(async () =>
+//{
+//    while (true)
+//    {
+//        var keyInfo = Console.ReadKey(intercept: true);
+//        if (keyInfo.Key == ConsoleKey.C && keyInfo.Modifiers == ConsoleModifiers.Control)
+//        {
+//            await cts.CancelAsync();
+//        }
+//    }
+//});
+
+//while (true)
+//{
+//    if (cts.Token.IsCancellationRequested)
+//    {
+//        cts = new CancellationTokenSource();
+//    }
+
+//    var prompt = Console.ReadLine()!;
+
+//    try
+//    {
+//        await foreach (var chunk in githubCopilotService.GetChatCompletionAsync(prompt, ct: cts.Token))
+//        {
+//            await Task.Delay(50, cts.Token);
+
+//            Console.Write(chunk?.Content);
+//        }
+//    }
+//    catch (OperationCanceledException)
+//    {
+//    }
+//    catch (Exception ex)
+//    {
+//        Console.WriteLine($"Error: {ex.Message}");
+//    }
+
+//    Console.WriteLine();
+//}
+
+var data = await githubCopilotService.GetJsonCompletionAsync<Response>("Return a list of all available .NET Core versions from the past five years.");
+
+Console.ReadKey();
+
+
+class Response
 {
-    while (true)
-    {
-        var keyInfo = Console.ReadKey(intercept: true);
-        if (keyInfo.Key == ConsoleKey.C && keyInfo.Modifiers == ConsoleModifiers.Control)
-        {
-            await cts.CancelAsync();
-        }
-    }
-});
+    public List<DotNetCoreVersion>? Data { get; set; } // You always have to create a wrapper class for the response if the data is an array
+}
 
-while (true)
+class DotNetCoreVersion
 {
-    if (cts.Token.IsCancellationRequested)
-    {
-        cts = new CancellationTokenSource();
-    }
+    [Description("Version number in the format of Major.Minor.Patch")]
+    public string? Version { get; set; }
 
-    var prompt = Console.ReadLine()!;
+    [Description("Release date of the version")]
+    public DateTime? ReleaseDate { get; set; }
 
-    try
-    {
-        await foreach (var chunk in githubCopilotService.GetChatCompletionAsync(prompt, ct: cts.Token))
-        {
-            await Task.Delay(50, cts.Token);
-
-            Console.Write(chunk?.Content);
-        }
-    }
-    catch (OperationCanceledException)
-    {
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error: {ex.Message}");
-    }
-
-    Console.WriteLine();
+    [Description("End of life date of the version")]
+    public DateTime? EndOfLife { get; set; }
 }

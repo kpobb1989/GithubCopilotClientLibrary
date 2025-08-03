@@ -1,16 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubApi.DTO
 {
     public class CopilotTokenDto
     {
-        [JsonPropertyName("token")]
+        [JsonProperty("token")]
         public string Token { get; init; } = null!;
 
-        [JsonPropertyName("refresh_in")]
+        [JsonProperty("refresh_in")]
         public long RefreshIn { get; init; }
 
-        [JsonPropertyName("expires_at")]
+        [JsonProperty("expires_at")]
         public long ExpiresAt { get; init; }
     }
 }

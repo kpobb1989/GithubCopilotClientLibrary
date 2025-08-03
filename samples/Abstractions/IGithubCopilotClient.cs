@@ -30,6 +30,23 @@ namespace GithubApiProxy.Abstractions
         Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default);
 
         /// <summary>
+        /// Sends a prompt to a JSON-based completion service and retrieves the deserialized response as an object of
+        /// type <typeparamref name="T"/>.
+        /// </summary>
+        /// <remarks>This method is designed to interact with a JSON-based completion service, such as an
+        /// AI model or API,  and deserialize the response into the specified type <typeparamref name="T"/>. Ensure that
+        /// the type <typeparamref name="T"/>  matches the expected structure of the JSON response to avoid
+        /// deserialization errors.</remarks>
+        /// <typeparam name="T">The type of the object to deserialize the JSON response into. Must be a reference type.</typeparam>
+        /// <param name="prompt">The input prompt to send to the completion service. Cannot be null or empty.</param>
+        /// <param name="ct">A cancellation token that can be used to cancel the operation. Defaults to <see langword="default"/> if not
+        /// provided.</param>
+        /// <returns>A task representing the asynchronous operation. The result contains the deserialized object of type
+        /// <typeparamref name="T"/>,  or <see langword="null"/> if the response cannot be deserialized or the service
+        /// returns no data.</returns>
+        Task<T?> GetJsonCompletionAsync<T>(string prompt, CancellationToken ct = default) where T : class;
+
+        /// <summary>
         /// Generates a stream of chat completion messages based on the provided prompt.
         /// </summary>
         /// <remarks>This method returns an asynchronous stream, allowing the caller to process chat

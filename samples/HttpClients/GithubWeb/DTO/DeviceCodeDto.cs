@@ -1,19 +1,19 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubWeb.DTO
 {
     public class DeviceCodeDto
     {
-        [JsonPropertyName("device_code")]
+        [JsonProperty("device_code")]
         public string DeviceCode { get; init; } = null!;
 
-        [JsonPropertyName("interval")]
+        [JsonProperty("interval")]
         public int Interval { get; init; }
 
-        [JsonPropertyName("user_code")]
+        [JsonProperty("user_code")]
         public string UserCode { get; init; } = null!;
 
-        [JsonPropertyName("verification_uri")]
+        [JsonProperty("verification_uri")]
         public string VerificationUri { get; init; } = null!;
     }
 }

@@ -1,58 +1,58 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class ChatCompletionRequest
     {
-        [JsonPropertyName("messages")]
+        [JsonProperty("messages")]
         public IEnumerable<Message> Messages { get; set; } = [];
 
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = string.Empty;
+        [JsonProperty("model")]
+        public string Model { get; set; } = null!;
 
-        [JsonPropertyName("temperature")]
+        [JsonProperty("temperature")]
         public double? Temperature { get; set; }
 
-        [JsonPropertyName("top_p")]
+        [JsonProperty("top_p")]
         public double? TopP { get; set; }
 
-        [JsonPropertyName("max_tokens")]
+        [JsonProperty("max_tokens")]
         public int? MaxTokens { get; set; }
 
-        [JsonPropertyName("stop")]
+        [JsonProperty("stop")]
         public object? Stop { get; set; }
 
-        [JsonPropertyName("n")]
+        [JsonProperty("n")]
         public int? N { get; set; }
 
-        [JsonPropertyName("stream")]
+        [JsonProperty("stream")]
         public bool Stream { get; set; }
 
-        [JsonPropertyName("frequency_penalty")]
+        [JsonProperty("frequency_penalty")]
         public double? FrequencyPenalty { get; set; }
 
-        [JsonPropertyName("presence_penalty")]
+        [JsonProperty("presence_penalty")]
         public double? PresencePenalty { get; set; }
 
-        [JsonPropertyName("logit_bias")]
+        [JsonProperty("logit_bias")]
         public Dictionary<string, double>? LogitBias { get; set; }
 
-        [JsonPropertyName("logprobs")]
+        [JsonProperty("logprobs")]
         public bool? Logprobs { get; set; }
 
-        [JsonPropertyName("response_format")]
+        [JsonProperty("response_format")]
         public ResponseFormat? ResponseFormat { get; set; }
 
-        [JsonPropertyName("seed")]
+        [JsonProperty("seed")]
         public int? Seed { get; set; }
 
-        [JsonPropertyName("tools")]
+        [JsonProperty("tools")]
         public List<Tool>? Tools { get; set; }
 
-        [JsonPropertyName("tool_choice")]
+        [JsonProperty("tool_choice")]
         public object? ToolChoice { get; set; }
 
-        [JsonPropertyName("user")]
+        [JsonProperty("user")]
         public string? User { get; set; }
     }
 }

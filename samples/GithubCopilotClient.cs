@@ -1,14 +1,14 @@
 ﻿using GithubApiProxy.Abstractions;
 using GithubApiProxy.Abstractions.HttpClients;
+using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Schema.Generation;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json;
 
 namespace GithubApiProxy
 {
@@ -19,10 +19,8 @@ namespace GithubApiProxy
         private readonly IGithubCopilotHttpClient _githubCopilotHttpClient;
 
         private readonly GithubCopilotOptions _options;
-        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
-        {
-            WriteIndented = true
-        };
+        private readonly JsonSerializer _jsonSerializer;
+        private readonly JSchemaGenerator _jsonSchemaGenerator = new();
 
         public List<Message> ConversationHistory { get; set; } = [];
 
@@ -42,11 +40,13 @@ namespace GithubApiProxy
             IGithubApiHttpClient githubApiHttpClient,
             IGithubWebHttpClient githubWebHttpClient,
             IGithubCopilotHttpClient githubCopilotHttpClient,
+            JsonSerializer jsonSerializer,
             GithubCopilotOptions options)
         {
             _githubApiHttpClient = githubApiHttpClient;
             _githubWebHttpClient = githubWebHttpClient;
             _githubCopilotHttpClient = githubCopilotHttpClient;
+            _jsonSerializer = jsonSerializer;
             _options = options;
         }
 
@@ -72,6 +72,7 @@ namespace GithubApiProxy
             _githubApiHttpClient = serviceProvider.GetRequiredService<IGithubApiHttpClient>();
             _githubWebHttpClient = serviceProvider.GetRequiredService<IGithubWebHttpClient>();
             _githubCopilotHttpClient = serviceProvider.GetRequiredService<IGithubCopilotHttpClient>();
+            _jsonSerializer = serviceProvider.GetRequiredService<JsonSerializer>();
 
             _options = options;
         }
@@ -86,7 +87,7 @@ namespace GithubApiProxy
             {
                 using var fileStream = File.OpenRead(githubTokenPath);
 
-                accessToken = await JsonSerializer.DeserializeAsync<AccessTokenDto>(fileStream, cancellationToken: ct);
+                accessToken = _jsonSerializer.Deserialize<AccessTokenDto>(fileStream);
             }
             if (accessToken == null)
             {
@@ -109,23 +110,17 @@ namespace GithubApiProxy
 
                 using var fileStream = File.Create(githubTokenPath);
 
-                await JsonSerializer.SerializeAsync(fileStream, accessToken, _jsonSerializerOptions, ct);
+                _jsonSerializer.Serialize(fileStream!, accessToken);
             }
 
             _githubApiHttpClient.SetAccessToken(accessToken.AccessToken);
         }
 
-        /// <summary>
-        /// Releases the resources used by the current instance, including any associated HTTP clients.
-        /// </summary>
-        /// <remarks>This method disposes of the underlying HTTP clients used for GitHub API and Copilot
-        /// interactions. After calling this method, the instance should not be used further.</remarks>
         public void Dispose()
         {
             _githubApiHttpClient.Dispose();
             _githubCopilotHttpClient.Dispose();
         }
-
 
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
@@ -143,33 +138,64 @@ namespace GithubApiProxy
             return message?.Content ?? null;
         }
 
+        public async Task<T?> GetJsonCompletionAsync<T>(string prompt, CancellationToken ct = default) where T : class
+        {
+            var format = new ResponseFormat
+            {
+                Type = "json_schema",
+                JsonSchema = new JsonSchema
+                {
+                    Name = typeof(T).Name,
+                    Schema = _jsonSchemaGenerator.Generate(typeof(T))
+                }
+            };
+
+            var request = GetCompletionRequest(prompt, responseFormat: format);
+
+            var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
+
+            var message = response.Choices?.FirstOrDefault()?.Message;
+
+            if (_options.KeepConversationHistory && message != null)
+            {
+                ConversationHistory.Add(message);
+            }
+
+            if (message?.Content == null)
+            {
+                return null;
+            }
+
+            return _jsonSerializer.Deserialize<T>(message.Content);
+        }
+
         public async IAsyncEnumerable<Message?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var request = GetCompletionRequest(prompt, stream: true);
 
-            var chunks = new StringBuilder();
+            var chunks = new List<Message>();
 
             await foreach (var chunk in _githubCopilotHttpClient.GetChatCompletionStreamingAsync(request, ct: ct))
             {
                 var message = chunk?.Choices?.FirstOrDefault()?.Delta;
 
-                chunks.Append(message?.Content);
+                if (message != null)
+                {
+                    chunks.Add(message);
+                }
 
                 yield return message;
             }
 
-            if (chunks.Length > 0)
+            if (_options.KeepConversationHistory && chunks.Count > 0)
             {
-                var completeMessage = new Message("assistant", chunks.ToString());
+                var completeMessage = new Message(chunks[0].Role, string.Join("", chunks.Select(s => s.Content)));
 
-                if (_options.KeepConversationHistory)
-                {
-                    ConversationHistory.Add(completeMessage);
-                }
+                ConversationHistory.Add(completeMessage);
             }
         }
 
-        private ChatCompletionRequest GetCompletionRequest(string prompt, bool stream = false)
+        private ChatCompletionRequest GetCompletionRequest(string prompt, bool stream = false, ResponseFormat? responseFormat = null)
         {
             return new ChatCompletionRequest
             {
@@ -177,6 +203,7 @@ namespace GithubApiProxy
                 PresencePenalty = _options.PresencePenalty,
                 Temperature = _options.Temperature,
                 TopP = _options.TopP,
+                ResponseFormat = responseFormat,
                 N = _options.N,
                 Stream = stream,
                 Model = _options.Model,

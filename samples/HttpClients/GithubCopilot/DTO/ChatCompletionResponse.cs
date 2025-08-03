@@ -1,25 +1,20 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO
 {
     public class ChatCompletionResponse
     {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = string.Empty;
 
-        [JsonPropertyName("object")]
-        public string Object { get; set; } = string.Empty;
+        [JsonProperty("object")]
+        public string? Object { get; set; }
 
-        [JsonPropertyName("created")]
+        [JsonProperty("created")]
         public long Created { get; set; }
 
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = string.Empty;
+        [JsonProperty("model")]
+        public string Model { get; set; } = null!;
 
-        [JsonPropertyName("choices")]
+        [JsonProperty("choices")]
         public List<ChoiceNonStreaming> Choices { get; set; } = new();
-
-        [JsonPropertyName("system_fingerprint")]
-        public string? SystemFingerprint { get; set; }
     }
 }
