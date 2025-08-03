@@ -11,6 +11,11 @@
         public bool OpenBrowserOnAuthenticate { get; set; } = true;
 
         /// <summary>
+        /// Gets or sets a value indicating whether automatic authentication is enabled.
+        /// </summary>
+        public bool AutoSignIn { get; set; } = true;
+
+        /// <summary>
         /// Gets or sets the OAuth client ID for GitHub authentication.
         /// </summary>
         public string ClientId { get; set; } = "01ab8ac9400c4e429b23";

@@ -7,14 +7,17 @@ namespace GithubApiProxy.Abstractions
     public interface IGithubCopilotClient : IDisposable
     {
         /// <summary>
-        /// Authenticates the application with GitHub by obtaining an access token.
+        /// Authenticates the user asynchronously.
         /// </summary>
-        /// <remarks>This method attempts to retrieve an access token from a local file. If the token is
-        /// not found or is invalid,  it initiates a device code authentication flow, prompting the user to enter a code
-        /// at the provided verification URL. The access token is then stored locally for future use.</remarks>
-        /// <param name="ct">A <see cref="CancellationToken"/> that can be used to cancel the authentication process.</param>
-        /// <returns></returns>
-        Task AuthenticateAsync(CancellationToken ct = default);
+        /// <remarks>Use this method to authenticate a user in scenarios where authentication is required.
+        /// If <paramref name="force"/> is set to <see langword="true"/>, the method ensures that the authentication
+        /// process is performed regardless of any existing cached state.</remarks>
+        /// <param name="force">A value indicating whether to force re-authentication.  If <see langword="true"/>, the method bypasses any
+        /// cached authentication state and performs a fresh authentication. If <see langword="false"/>, cached
+        /// authentication state may be used if available.</param>
+        /// <param name="ct">A cancellation token that can be used to cancel the authentication operation.</param>
+        /// <returns>A task that represents the asynchronous authentication operation.</returns>
+        Task AuthenticateAsync(bool force = false, CancellationToken ct = default);
 
         /// <summary>
         /// Generates a text completion based on the provided prompt.

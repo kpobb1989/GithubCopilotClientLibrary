@@ -5,7 +5,6 @@ using GithubApiProxy.HttpClients.GithubCopilot.DTO;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema.Generation;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -21,6 +20,8 @@ namespace GithubApiProxy
         private readonly GithubCopilotOptions _options;
         private readonly JsonSerializer _jsonSerializer;
         private readonly JSchemaGenerator _jsonSchemaGenerator = new();
+
+        private string? githubAccessToken = null;
 
         public List<Message> ConversationHistory { get; set; } = [];
 
@@ -77,8 +78,19 @@ namespace GithubApiProxy
             _options = options;
         }
 
-        public async Task AuthenticateAsync(CancellationToken ct = default)
+        public void Dispose()
         {
+            _githubApiHttpClient.Dispose();
+            _githubCopilotHttpClient.Dispose();
+        }
+
+        public async Task AuthenticateAsync(bool force = false, CancellationToken ct = default)
+        {
+            if (!force && !string.IsNullOrEmpty(githubAccessToken))
+            {
+                return;
+            }
+
             AccessTokenDto? accessToken = null;
 
             var githubTokenPath = Path.Combine(AppContext.BaseDirectory, _options.GithubTokenFileName);
@@ -114,16 +126,16 @@ namespace GithubApiProxy
             }
 
             _githubApiHttpClient.SetAccessToken(accessToken.AccessToken);
-        }
 
-        public void Dispose()
-        {
-            _githubApiHttpClient.Dispose();
-            _githubCopilotHttpClient.Dispose();
+            githubAccessToken = accessToken.AccessToken;
+
+            Console.WriteLine("Authentication successful. You can now use the GitHub Copilot API.");
         }
 
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
+            await AutoSignInAsync(ct);
+
             var request = GetCompletionRequest(prompt);
 
             var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
@@ -140,6 +152,8 @@ namespace GithubApiProxy
 
         public async Task<T?> GetJsonCompletionAsync<T>(string prompt, CancellationToken ct = default) where T : class
         {
+            await AutoSignInAsync(ct);
+
             var format = new ResponseFormat
             {
                 Type = "json_schema",
@@ -171,6 +185,8 @@ namespace GithubApiProxy
 
         public async IAsyncEnumerable<Message?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
         {
+            await AutoSignInAsync(ct);
+
             var request = GetCompletionRequest(prompt, stream: true);
 
             var chunks = new List<Message>();
@@ -192,6 +208,14 @@ namespace GithubApiProxy
                 var completeMessage = new Message(chunks[0].Role, string.Join("", chunks.Select(s => s.Content)));
 
                 ConversationHistory.Add(completeMessage);
+            }
+        }
+
+        private async Task AutoSignInAsync(CancellationToken ct = default)
+        {
+            if (_options.AutoSignIn)
+            {
+                await AuthenticateAsync(ct: ct);
             }
         }
 
