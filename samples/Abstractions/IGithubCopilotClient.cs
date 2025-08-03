@@ -12,6 +12,16 @@ namespace GithubApiProxy.Abstractions
         IEnumerable<GithubCopilotMessage> GetConversationHistory();
 
         /// <summary>
+        /// Retrieves a collection of available GitHub Copilot models.
+        /// </summary>
+        /// <remarks>This method performs an asynchronous operation to fetch the list of models supported by GitHub
+        /// Copilot. The returned collection may be empty if no models are available.</remarks>
+        /// <param name="ct">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an  <see
+        /// cref="IEnumerable{GithubCopilotModel}"/> representing the available models.</returns>
+        Task<IEnumerable<GithubCopilotModel>> GetModelsAsync(CancellationToken ct = default);
+
+        /// <summary>
         /// Authenticates the user asynchronously.
         /// </summary>
         /// <remarks>Use this method to authenticate a user in scenarios where authentication is required.

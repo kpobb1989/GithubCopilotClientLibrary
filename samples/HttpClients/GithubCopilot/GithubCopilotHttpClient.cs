@@ -1,6 +1,7 @@
 ﻿using GithubApiProxy.Abstractions.HttpClients;
 using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
+using GithubApiProxy.HttpClients.GithubCopilot.DTO.Models;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Streaming;
 using Newtonsoft.Json;
 using System.Runtime.CompilerServices;
@@ -61,6 +62,13 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
             }
         }
 
+        public async Task<ModelsResponse> GetModelsAsync(CancellationToken ct = default)
+        {
+            await RefreshCopilotTokenAsync(ct);
+
+            return await _httpClient.ExecuteAndGetJsonAsync<ModelsResponse>("models", HttpMethod.Get, jsonSerializer, ct: ct);
+        }
+
         public void Dispose()
         {
             _httpClient.Dispose();
@@ -84,7 +92,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot
             finally
             {
                 _semaphore.Release();
-            }          
+            }
         }
     }
 }

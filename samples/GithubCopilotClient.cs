@@ -13,6 +13,7 @@ using Newtonsoft.Json.Schema.Generation;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+
 namespace GithubApiProxy
 {
     public class GithubCopilotClient : IGithubCopilotClient
@@ -224,6 +225,57 @@ namespace GithubApiProxy
             }
         }
 
+        public async Task<IEnumerable<GithubCopilotModel>> GetModelsAsync(CancellationToken ct = default)
+        {
+            await AutoSignInAsync(ct);
+
+            var response = await _githubCopilotHttpClient.GetModelsAsync(ct);
+
+            var models = response.Data?.Select(m =>
+            {
+                if (m.Name is null || m.Version is null || m.Capabilities?.Tokenizer is null || m.Preview is null || m.Vendor is null)
+                    throw new InvalidOperationException("Model data is missing required fields.");
+
+                return new GithubCopilotModel
+                {
+                    Name = m.Name,
+                    Version = m.Version,
+                    ModelPickerEnabled = m.ModelPickerEnabled,
+                    Limits = m.Capabilities.Limits is not null
+                        ? new GithubCopilotModelLimits
+                        {
+                            MaxContextWindowTokens = m.Capabilities.Limits.MaxContextWindowTokens ?? 0,
+                            MaxOutputTokens = m.Capabilities.Limits.MaxOutputTokens ?? 0,
+                            MaxPromptTokens = m.Capabilities.Limits.MaxPromptTokens ?? 0,
+                            Vision = m.Capabilities.Limits.Vision is not null
+                                ? new GithubCopilotVisionLimits
+                                {
+                                    MaxPromptImageSize = m.Capabilities.Limits.Vision.MaxPromptImageSize ?? 0,
+                                    MaxPromptImages = m.Capabilities.Limits.Vision.MaxPromptImages ?? 0,
+                                    SupportedMediaTypes = m.Capabilities.Limits.Vision.SupportedMediaTypes ?? new List<string>()
+                                }
+                                : null
+                        }
+                        : null,
+                    Supports = m.Capabilities.Supports is not null
+                        ? new GithubCopilotModelSupports
+                        {
+                            ToolCalls = m.Capabilities.Supports.ToolCalls,
+                            ParallelToolCalls = m.Capabilities.Supports.ParallelToolCalls,
+                            StructuredOutputs = m.Capabilities.Supports.StructuredOutputs,
+                            Streaming = m.Capabilities.Supports.Streaming,
+                            Vision = m.Capabilities.Supports.Vision
+                        }
+                        : null,
+                    Tokenizer = m.Capabilities.Tokenizer,
+                    Preview = m.Preview.Value,
+                    Vendor = m.Vendor
+                };
+            }).ToList() ?? new List<GithubCopilotModel>();
+
+            return models;
+        }
+
         private async Task AutoSignInAsync(CancellationToken ct = default)
         {
             if (_options.AutoSignIn)
@@ -231,6 +283,7 @@ namespace GithubApiProxy
                 await AuthenticateAsync(ct: ct);
             }
         }
+
         private static GithubCopilotQuota MapQuotaDetail(QuotaDetail detail)
         {
             return new GithubCopilotQuota

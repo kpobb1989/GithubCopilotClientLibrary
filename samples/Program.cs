@@ -98,6 +98,8 @@ Console.WriteLine("Enter a prompt for GitHub Copilot:");
 //    public DateTime? EndOfLife { get; set; }
 //}
 
-//var a = await githubCopilotService.GetCopilotUsageAsync();
+var a = await githubCopilotService.GetModelsAsync();
 
-//Console.ReadKey();
+var b = a.Where(s => s.ModelPickerEnabled).ToList();
+
+Console.ReadKey();
