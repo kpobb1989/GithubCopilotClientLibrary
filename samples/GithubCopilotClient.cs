@@ -346,7 +346,7 @@ namespace GithubApiProxy
             };
         }
 
-        private ChatCompletionRequest GetCompletionRequest(string? prompt = null, List<Tool>? tools = null, bool stream = false, ResponseFormat? responseFormat = null, object? toolChoice = null)
+        private ChatCompletionRequest GetCompletionRequest(string? prompt, List<Tool>? tools = null, bool stream = false, ResponseFormat? responseFormat = null, object? toolChoice = null)
         {
             var messages = _options.KeepConversationHistory ? ConversationHistory : [];
 
@@ -376,47 +376,6 @@ namespace GithubApiProxy
                 Tools = tools,
                 ToolChoice = toolChoice
             };
-        }
-
-        private async Task<string?> HandleToolCallAsync<TRequest>(List<Tool> tools, List<ToolCall>? toolCalls, CancellationToken ct) where TRequest : class
-        {
-            if (toolCalls == null || toolCalls.Count == 0)
-                return null;
-
-            var messages = _options.KeepConversationHistory ? ConversationHistory : new List<Message>();
-
-            foreach (var toolCall in toolCalls)
-            {
-                var matchingTool = tools
-                    .OfType<HttpClients.GithubCopilot.DTO.Chat.Tool<TRequest>>()
-                    .FirstOrDefault(t => t.Function?.Name == toolCall.Function.Name);
-
-                if (matchingTool?.ToolHandler == null)
-                    throw new InvalidOperationException($"No handler found for tool: {toolCall.Function.Name}");
-
-                var toolRequest = _jsonSerializer.Deserialize<TRequest>(toolCall.Function.Arguments);
-
-                if (toolRequest != null)
-                {
-                    var toolResponse = await matchingTool.ToolHandler(toolRequest);
-
-                    messages.Add(new Message("tool", JsonConvert.SerializeObject(toolResponse))
-                    {
-                        ToolCallId = toolCall.Id
-                    });
-                }
-            }
-            var request = GetCompletionRequest();
-            request.Messages = messages;
-
-            var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
-
-            var followUpMessage = response.Choices?.FirstOrDefault()?.Message;
-
-            if (_options.KeepConversationHistory && followUpMessage != null)
-                ConversationHistory.Add(followUpMessage);
-
-            return followUpMessage?.Content ?? null;
         }
     }
 }
