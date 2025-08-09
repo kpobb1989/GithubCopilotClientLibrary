@@ -6,7 +6,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
     internal class ChatCompletionRequest
     {
         [JsonProperty("messages")]
-        public IEnumerable<Message> Messages { get; set; } = [];
+        public List<Message> Messages { get; set; } = new();
 
         [JsonProperty("model")]
         public string Model { get; set; } = null!;

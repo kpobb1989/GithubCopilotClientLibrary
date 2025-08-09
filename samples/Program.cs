@@ -1,8 +1,10 @@
 ﻿using GithubApiProxy;
 using GithubApiProxy.Abstractions;
+using GithubApiProxy.DTO;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 // Properly display special characters like emojis
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -12,13 +14,11 @@ var builder = Host.CreateApplicationBuilder(args);
 // Suppress System.Net.Http.HttpClient logs (set to Warning or higher)
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
-builder.Services.AddGithubCopilotModule();
+builder.Services.AddGithubCopilotModule(new GithubCopilotOptions() { SystemPrompt = null });
 
 var app = builder.Build();
 
 var githubCopilotService = app.Services.GetRequiredService<IGithubCopilotClient>();
-
-Console.WriteLine("Enter a prompt for GitHub Copilot:");
 
 //while (true)
 //{
@@ -84,26 +84,27 @@ Console.WriteLine("Enter a prompt for GitHub Copilot:");
 
 //Console.ReadKey();
 
-
-//class Response
-//{
-//    public List<DotNetCoreVersion>? Data { get; set; } // You always have to create a wrapper class for the response if the data is an array
-//}
-
-//class DotNetCoreVersion
-//{
-//    [Description("Version number in the format of Major.Minor.Patch")]
-//    public string? Version { get; set; }
-
-//    [Description("Release date of the version")]
-//    public DateTime? ReleaseDate { get; set; }
-
-//    [Description("End of life date of the version")]
-//    public DateTime? EndOfLife { get; set; }
-//}
-
-var a = await githubCopilotService.GetModelsAsync();
-
-var b = a.Where(s => s.ModelPickerEnabled).ToList();
+// Single tool usage
+var resp = await githubCopilotService.GetTextCompletionAsync(
+    "What's the weather in Vinnytsia Latitude:49.2328, Longitude:28.48097?",
+    "Get the current weather for a given latitude and longitude.",
+    async (GetWeatherRequest parameters) =>
+    {
+        return new
+        {
+            temperature = 22.5,
+            condition = "Sunny",
+            lat = parameters.Lat,
+            lon = parameters.Lng
+        };
+    }
+);
+Console.WriteLine(resp);
 
 Console.ReadKey();
+
+public class GetWeatherRequest
+{
+    public double Lat { get; set; }
+    public double Lng { get; set; }
+}
