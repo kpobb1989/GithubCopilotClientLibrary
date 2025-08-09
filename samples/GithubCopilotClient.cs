@@ -163,34 +163,51 @@ namespace GithubApiProxy
             return message?.Content ?? null;
         }
 
-        public async Task<string?> GetTextCompletionAsync<TRequest>(string prompt, string toolDescription, Func<TRequest, Task<object?>> toolHandler, CancellationToken ct = default) where TRequest : class
+        public async Task<string?> GetTextCompletionAsync<TRequest>(string prompt, List<Tool> tools, CancellationToken ct = default) where TRequest : class
         {
             await AutoSignInAsync(ct);
-            var type = typeof(TRequest);
-            var name = type.Name;
-            var tools = new List<Tool>
-            {
-                new Tool
-                {
-                    Type = "function",
-                    Function = new ToolFunction
-                    {
-                        Name = name,
-                        Description = toolDescription,
-                        Parameters = _jsonSchemaGenerator.Generate(type),
-                        ParametersType = type
-                    },
-                    ToolChoice = "required"
-                }
-            };
+
+            // Step 1: Initial request with tools
             var request = GetCompletionRequest(prompt, tools, toolChoice: "required");
             var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
             var message = response.Choices?.FirstOrDefault()?.Message;
             if (_options.KeepConversationHistory && message != null)
                 ConversationHistory.Add(message);
-            if (message?.ToolCalls != null && message.ToolCalls.Count > 0)
-                return await HandleToolCallAndFollowUp(prompt, tools, message, name, toolHandler, ct);
-            return message?.Content ?? null;
+
+            // If no tool calls, return the assistant's message
+            if (message?.ToolCalls == null || message.ToolCalls.Count == 0)
+                return message?.Content ?? null;
+
+            // Step 2: For each tool_call, invoke the handler and send the tool result back
+            var followUpMessages = new List<Message>
+            {
+                new Message("user", prompt),
+                message // assistant's tool_calls
+            };
+
+            foreach (var toolCall in message.ToolCalls)
+            {
+                var matchingTool = tools
+                    .OfType<HttpClients.GithubCopilot.DTO.Chat.Tool<TRequest>>()
+                    .FirstOrDefault(t => t.Function?.Name == toolCall.Function.Name);
+                if (matchingTool?.ToolHandler == null)
+                    throw new InvalidOperationException($"No handler found for tool: {toolCall.Function.Name}");
+                var toolRequest = _jsonSerializer.Deserialize<TRequest>(toolCall.Function.Arguments);
+                var toolResponse = await matchingTool.ToolHandler(toolRequest!);
+                followUpMessages.Add(new Message("tool", JsonConvert.SerializeObject(toolResponse))
+                {
+                    ToolCallId = toolCall.Id
+                });
+            }
+
+            // Step 3: Send follow-up request with tool result(s)
+            var followUpRequest = GetCompletionRequest(null, tools); // No new prompt, just continue conversation
+            followUpRequest.Messages = followUpMessages;
+            var followUpResponse = await _githubCopilotHttpClient.GetChatCompletionAsync(followUpRequest, ct);
+            var finalMessage = followUpResponse.Choices?.FirstOrDefault()?.Message;
+            if (_options.KeepConversationHistory && finalMessage != null)
+                ConversationHistory.Add(finalMessage);
+            return finalMessage?.Content ?? null;
         }
 
         public async Task<T?> GetJsonCompletionAsync<T>(string prompt, CancellationToken ct = default) where T : class
@@ -329,48 +346,7 @@ namespace GithubApiProxy
             };
         }
 
-        private ChatCompletionRequest GetCompletionRequest(string prompt, List<Tool>? tools = null, bool stream = false, ResponseFormat? responseFormat = null, object? toolChoice = null)
-        {
-            object? finalToolChoice = toolChoice;
-            bool allowParallel = false;
-            if (tools != null && tools.Count > 0)
-            {
-                var requiredTool = tools.FirstOrDefault(t => t.ToolChoice == "Required" || t.ToolChoice == "required");
-                if (requiredTool != null && requiredTool.Function != null)
-                {
-                    finalToolChoice = new
-                    {
-                        type = "function",
-                        function = new { name = requiredTool.Function.Name }
-                    };
-                }
-                else if (tools.Any(t => t.ToolChoice == "AutoParallel"))
-                {
-                    finalToolChoice = "auto_parallel";
-                }
-                else
-                {
-                    finalToolChoice = "auto";
-                }
-                allowParallel = tools.Any(t => t.AllowParallel == true);
-            }
-            return new ChatCompletionRequest
-            {
-                FrequencyPenalty = _options.FrequencyPenalty,
-                PresencePenalty = _options.PresencePenalty,
-                Temperature = _options.Temperature,
-                TopP = _options.TopP,
-                ResponseFormat = responseFormat,
-                N = _options.N,
-                Stream = stream,
-                Model = _options.Model,
-                Messages = GetMessages(prompt),
-                Tools = tools,
-                ToolChoice = finalToolChoice
-            };
-        }
-
-        private List<Message> GetMessages(string prompt)
+        private ChatCompletionRequest GetCompletionRequest(string? prompt = null, List<Tool>? tools = null, bool stream = false, ResponseFormat? responseFormat = null, object? toolChoice = null)
         {
             var messages = _options.KeepConversationHistory ? ConversationHistory : [];
 
@@ -381,38 +357,66 @@ namespace GithubApiProxy
                 messages.Insert(0, new Message("system", _options.SystemPrompt));
             }
 
-            messages.Add(new Message("user", prompt));
+            if (!string.IsNullOrEmpty(prompt))
+            {
+                messages.Add(new Message("user", prompt));
+            }
 
-            return messages;
+            return new ChatCompletionRequest
+            {
+                FrequencyPenalty = _options.FrequencyPenalty,
+                PresencePenalty = _options.PresencePenalty,
+                Temperature = _options.Temperature,
+                TopP = _options.TopP,
+                ResponseFormat = responseFormat,
+                N = _options.N,
+                Stream = stream,
+                Model = _options.Model,
+                Messages = messages,
+                Tools = tools,
+                ToolChoice = toolChoice
+            };
         }
 
-        private async Task<string?> HandleToolCallAndFollowUp<TParams>(string prompt, List<Tool> tools, Message message, string toolName, Func<TParams, Task<object?>> toolHandler, CancellationToken ct)
-    where TParams : class
-{
-    if (message.ToolCalls == null || message.ToolCalls.Count == 0)
-        return null;
-    // The protocol requires: [assistant/tool_calls, tool, ...]
-    var followUpMessages = new List<Message> { message };
-    foreach (var toolCall in message.ToolCalls)
-    {
-        var arguments = toolCall.Function.Arguments;
-        object? paramObj = !string.IsNullOrEmpty(arguments)
-            ? JsonConvert.DeserializeObject(arguments, typeof(TParams))
-            : null;
-        var toolResult = await toolHandler((TParams)paramObj!);
-        followUpMessages.Add(new Message("tool", JsonConvert.SerializeObject(toolResult))
+        private async Task<string?> HandleToolCallAsync<TRequest>(List<Tool> tools, List<ToolCall>? toolCalls, CancellationToken ct) where TRequest : class
         {
-            ToolCallId = toolCall.Id
-        });
-    }
-    var followUpRequest = GetCompletionRequest(prompt);
-    followUpRequest.Messages = followUpMessages;
-    var followUpResponse = await _githubCopilotHttpClient.GetChatCompletionAsync(followUpRequest, ct);
-    var followUpMessage = followUpResponse.Choices?.FirstOrDefault()?.Message;
-    if (_options.KeepConversationHistory && followUpMessage != null)
-        ConversationHistory.Add(followUpMessage);
-    return followUpMessage?.Content ?? null;
-}
+            if (toolCalls == null || toolCalls.Count == 0)
+                return null;
 
+            var messages = _options.KeepConversationHistory ? ConversationHistory : new List<Message>();
+
+            foreach (var toolCall in toolCalls)
+            {
+                var matchingTool = tools
+                    .OfType<HttpClients.GithubCopilot.DTO.Chat.Tool<TRequest>>()
+                    .FirstOrDefault(t => t.Function?.Name == toolCall.Function.Name);
+
+                if (matchingTool?.ToolHandler == null)
+                    throw new InvalidOperationException($"No handler found for tool: {toolCall.Function.Name}");
+
+                var toolRequest = _jsonSerializer.Deserialize<TRequest>(toolCall.Function.Arguments);
+
+                if (toolRequest != null)
+                {
+                    var toolResponse = await matchingTool.ToolHandler(toolRequest);
+
+                    messages.Add(new Message("tool", JsonConvert.SerializeObject(toolResponse))
+                    {
+                        ToolCallId = toolCall.Id
+                    });
+                }
+            }
+            var request = GetCompletionRequest();
+            request.Messages = messages;
+
+            var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
+
+            var followUpMessage = response.Choices?.FirstOrDefault()?.Message;
+
+            if (_options.KeepConversationHistory && followUpMessage != null)
+                ConversationHistory.Add(followUpMessage);
+
+            return followUpMessage?.Content ?? null;
+        }
     }
 }

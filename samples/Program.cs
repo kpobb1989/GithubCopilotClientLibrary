@@ -1,6 +1,7 @@
 ﻿using GithubApiProxy;
 using GithubApiProxy.Abstractions;
 using GithubApiProxy.DTO;
+using GithubApiProxy.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -84,20 +85,21 @@ var githubCopilotService = app.Services.GetRequiredService<IGithubCopilotClient>
 
 //Console.ReadKey();
 
-// Single tool usage
-var resp = await githubCopilotService.GetTextCompletionAsync(
-    "What's the weather in Vinnytsia Latitude:49.2328, Longitude:28.48097?",
-    "Get the current weather for a given latitude and longitude.",
-    async (GetWeatherRequest parameters) =>
+var tools = new ToolBuilder().AddTool("Get the current weather for a given latitude and longitude.", async (GetWeatherRequest parameters) =>
+{
+    return new
     {
-        return new
-        {
-            temperature = 22.5,
-            condition = "Sunny",
-            lat = parameters.Lat,
-            lon = parameters.Lng
-        };
-    }
+        temperature = 25,
+        condition = "Sunny",
+        lat = parameters.Lat,
+        lon = parameters.Lng
+    };
+}).Build();
+
+// Single tool usage
+var resp = await githubCopilotService.GetTextCompletionAsync<GetWeatherRequest>(
+    "What's the weather in Vinnytsia Latitude:49.2328, Longitude:28.48097?",
+    tools
 );
 Console.WriteLine(resp);
 

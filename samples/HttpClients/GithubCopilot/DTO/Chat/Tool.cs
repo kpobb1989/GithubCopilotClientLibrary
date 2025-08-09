@@ -2,6 +2,20 @@
 
 namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 {
+    // Generic Tool class with non-serialized handler
+    public class Tool<TRequest> : Tool
+    {
+        [JsonIgnore]
+        public Func<TRequest, Task<object?>>? ToolHandler { get; set; }
+
+        public Tool(string type, ToolFunction? function = null, Func<TRequest, Task<object?>>? handler = null)
+        {
+            Type = type;
+            Function = function;
+            ToolHandler = handler;
+        }
+    }
+
     public class Tool
     {
         [JsonProperty("type")]
@@ -9,14 +23,6 @@ namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
 
         [JsonProperty("function", NullValueHandling = NullValueHandling.Ignore)]
         public ToolFunction? Function { get; set; }
-
-        // Add ToolChoice property (optional, nullable)
-        [JsonProperty("tool_choice", NullValueHandling = NullValueHandling.Ignore)]
-        public string? ToolChoice { get; set; }
-
-        // Indicates if this tool can be called in parallel with others
-        [JsonProperty("allow_parallel", NullValueHandling = NullValueHandling.Ignore)]
-        public bool? AllowParallel { get; set; }
     }
 
     public class ToolFunction
@@ -30,8 +36,7 @@ namespace GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat
         [JsonProperty("parameters", NullValueHandling = NullValueHandling.Ignore)]
         public object? Parameters { get; set; } // Should be a JSON schema or object
 
-        // Add ParametersType for runtime type resolution
-        [Newtonsoft.Json.JsonIgnore]
-        public System.Type? ParametersType { get; set; }
+        [JsonIgnore]
+        public Type? ParametersType { get; set; }
     }
 }
