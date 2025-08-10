@@ -1,11 +1,9 @@
 ﻿using GithubApiProxy;
 using GithubApiProxy.Abstractions;
-using GithubApiProxy.DTO;
 using GithubApiProxy.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 
 // Properly display special characters like emojis
 Console.OutputEncoding = System.Text.Encoding.UTF8;

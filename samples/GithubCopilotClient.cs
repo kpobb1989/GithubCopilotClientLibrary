@@ -4,9 +4,7 @@ using GithubApiProxy.DTO;
 using GithubApiProxy.Extensions;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Chat;
 using GithubApiProxy.HttpClients.GithubCopilot.DTO.Json;
-using GithubApiProxy.HttpClients.GithubCopilot.DTO.Usage;
 using GithubApiProxy.HttpClients.GithubWeb.DTO;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Schema.Generation;
@@ -16,7 +14,7 @@ using System.Runtime.CompilerServices;
 
 namespace GithubApiProxy
 {
-    public class GithubCopilotClient : IGithubCopilotClient
+    internal class GithubCopilotClient : IGithubCopilotClient
     {
         private List<Message> ConversationHistory { get; set; } = [];
 
@@ -31,34 +29,7 @@ namespace GithubApiProxy
 
         private string? githubAccessToken = null;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="GithubCopilotClient"/> class, configuring it with the specified
-        /// options.
-        /// </summary>
-        /// <remarks>This constructor sets up the necessary services and dependencies for interacting with
-        /// GitHub Copilot APIs. It uses dependency injection to initialize internal HTTP clients required for API
-        /// communication.</remarks>
-        /// <param name="options">The configuration options for the GitHub Copilot client. If <paramref name="options"/> is <see
-        /// langword="null"/>, default options will be used.</param>
-        public GithubCopilotClient(GithubCopilotOptions? options = null)
-        {
-            options ??= new GithubCopilotOptions();
-
-            var services = new ServiceCollection();
-
-            services.AddGithubCopilotModule(options);
-
-            var serviceProvider = services.BuildServiceProvider();
-
-            _githubApiHttpClient = serviceProvider.GetRequiredService<IGithubApiHttpClient>();
-            _githubWebHttpClient = serviceProvider.GetRequiredService<IGithubWebHttpClient>();
-            _githubCopilotHttpClient = serviceProvider.GetRequiredService<IGithubCopilotHttpClient>();
-            _jsonSerializer = serviceProvider.GetRequiredService<JsonSerializer>();
-            _logger = serviceProvider.GetRequiredService<ILogger<GithubCopilotClient>>();
-            _options = options;
-        }
-
-        internal GithubCopilotClient(
+        public GithubCopilotClient(
             IGithubApiHttpClient githubApiHttpClient,
             IGithubWebHttpClient githubWebHttpClient,
             IGithubCopilotHttpClient githubCopilotHttpClient,
@@ -133,7 +104,7 @@ namespace GithubApiProxy
 
         public async Task<GithubCopiotUsage> GetCopilotUsageAsync(CancellationToken ct = default)
         {
-            await AutoSignInAsync(ct);
+            await AuthenticateAsync(ct: ct);
 
             var response = await _githubApiHttpClient.GetCopilonUsageAsync(ct);
 
@@ -141,14 +112,31 @@ namespace GithubApiProxy
             {
                 CopilotPlan = response.CopilotPlan,
                 QuotaResetDate = response.QuotaResetDate,
-                Chat = MapQuotaDetail(response.QuotaSnapshots.Chat),
-                Completions = MapQuotaDetail(response.QuotaSnapshots.Completions),
-                Premium = MapQuotaDetail(response.QuotaSnapshots.PremiumInteractions)
+                Chat = new GithubCopilotQuota
+                {
+                    Entitlement = response.QuotaSnapshots.Chat.Entitlement,
+                    PercentRemaining = response.QuotaSnapshots.Chat.PercentRemaining,
+                    QuotaRemaining = response.QuotaSnapshots.Chat.QuotaRemaining,
+                    Unlimited = response.QuotaSnapshots.Chat.Unlimited
+                },
+                Completions = new GithubCopilotQuota
+                {
+                    Entitlement = response.QuotaSnapshots.Completions.Entitlement,
+                    PercentRemaining = response.QuotaSnapshots.Completions.PercentRemaining,
+                    QuotaRemaining = response.QuotaSnapshots.Completions.QuotaRemaining
+                },
+                Premium = new GithubCopilotQuota
+                {
+                    Entitlement = response.QuotaSnapshots.PremiumInteractions.Entitlement,
+                    PercentRemaining = response.QuotaSnapshots.PremiumInteractions.PercentRemaining,
+                    QuotaRemaining = response.QuotaSnapshots.PremiumInteractions.QuotaRemaining
+                }
             };
         }
+
         public async Task<string?> GetTextCompletionAsync(string prompt, CancellationToken ct = default)
         {
-            await AutoSignInAsync(ct);
+            await AuthenticateAsync(ct: ct);
 
             var request = GetCompletionRequest(prompt);
             var response = await _githubCopilotHttpClient.GetChatCompletionAsync(request, ct);
@@ -165,7 +153,7 @@ namespace GithubApiProxy
 
         public async Task<string?> GetTextCompletionAsync<TRequest>(string prompt, List<Tool> tools, CancellationToken ct = default) where TRequest : class
         {
-            await AutoSignInAsync(ct);
+            await AuthenticateAsync(ct: ct);
 
             // Step 1: Initial request with tools
             var request = GetCompletionRequest(prompt, tools, toolChoice: "required");
@@ -212,7 +200,7 @@ namespace GithubApiProxy
 
         public async Task<T?> GetJsonCompletionAsync<T>(string prompt, CancellationToken ct = default) where T : class
         {
-            await AutoSignInAsync(ct);
+            await AuthenticateAsync(ct: ct);
 
             var format = new ResponseFormat
             {
@@ -245,7 +233,7 @@ namespace GithubApiProxy
 
         public async IAsyncEnumerable<string?> GetChatCompletionAsync(string prompt, [EnumeratorCancellation] CancellationToken ct = default)
         {
-            await AutoSignInAsync(ct);
+            await AuthenticateAsync(ct: ct);
 
             var request = GetCompletionRequest(prompt, stream: true);
 
@@ -273,7 +261,7 @@ namespace GithubApiProxy
 
         public async Task<IEnumerable<GithubCopilotModel>> GetModelsAsync(CancellationToken ct = default)
         {
-            await AutoSignInAsync(ct);
+            await AuthenticateAsync(ct: ct);
 
             var response = await _githubCopilotHttpClient.GetModelsAsync(ct);
 
@@ -322,28 +310,9 @@ namespace GithubApiProxy
                     Preview = m.Preview.Value,
                     Vendor = m.Vendor
                 };
-            }).ToList() ?? new List<GithubCopilotModel>();
+            }).ToList() ?? [];
 
             return models;
-        }
-
-        private async Task AutoSignInAsync(CancellationToken ct = default)
-        {
-            if (_options.AutoSignIn)
-            {
-                await AuthenticateAsync(ct: ct);
-            }
-        }
-
-        private static GithubCopilotQuota MapQuotaDetail(QuotaDetail detail)
-        {
-            return new GithubCopilotQuota
-            {
-                Entitlement = detail.Entitlement,
-                PercentRemaining = detail.PercentRemaining,
-                QuotaRemaining = detail.QuotaRemaining,
-                Unlimited = detail.Unlimited
-            };
         }
 
         private ChatCompletionRequest GetCompletionRequest(string? prompt, List<Tool>? tools = null, bool stream = false, ResponseFormat? responseFormat = null, object? toolChoice = null)

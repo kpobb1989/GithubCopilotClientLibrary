@@ -11,11 +11,6 @@
         public bool OpenBrowserOnAuthenticate { get; set; } = true;
 
         /// <summary>
-        /// Gets or sets a value indicating whether automatic authentication is enabled.
-        /// </summary>
-        public bool AutoSignIn { get; set; } = true;
-
-        /// <summary>
         /// Gets or sets the OAuth client ID for GitHub authentication.
         /// </summary>
         public string ClientId { get; set; } = "Iv1.b507a08c87ecfe98";
@@ -113,10 +108,6 @@ The active document or selection is the source code the user is looking at right
 
 Call as many of the provided functions deemed relevant to gather information to answer the users question or accomplish their task.
 Avoid referring to functions provided outside of context in your response.
-
-You must enclose any Visual Studio setting or command names between two underscores like this:
-- __CommandName__
-- __SettingName__ or __SubSettingName1 > SubSettingName2__
 
 Todays current date is: {DateTime.UtcNow:MMMM dd, yyyy}";
     }
